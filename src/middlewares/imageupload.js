@@ -3,6 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import sharp from 'sharp';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -111,5 +115,32 @@ const convertJfifToJpeg = async (req, res, next) => {
     }
 };
 
-export { upload, uploadHandlers, handleMulterError, convertJfifToJpeg };
+const readingUploadDir = path.join(__dirname, '../../public/uploads/reading/');
+if (!fs.existsSync(readingUploadDir)) {
+    fs.mkdirSync(readingUploadDir, { recursive: true });
+}
+
+const readingStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, readingUploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+const readingFileFilter = (req, file, cb) => {
+    // Accept only audio files
+    const allowedTypes = /mp3|wav|m4a/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.test(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only audio files are allowed!'), false);
+    }
+};
+
+const readingUpload = multer({ storage: readingStorage, fileFilter: readingFileFilter });
+
+export { upload, uploadHandlers, handleMulterError, convertJfifToJpeg, readingUpload };
 export default uploadHandlers;

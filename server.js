@@ -13,6 +13,7 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.static('public'));
+app.use('/uploads', express.static('public/uploads'));
 
 
 // router

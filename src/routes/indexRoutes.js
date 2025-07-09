@@ -7,6 +7,7 @@ import { addAbout, deleteAbout, getAboutById, getAllAbout, updateAbout } from ".
 import { addPrivacyPolicy, deletePrivacyPolicy, getAllPrivacyPolicy, getPrivacyPolicyById, updatePrivacyPolicy } from "../controllers/privacyPolicyController.js";
 import { createPremium, deletePremium, getAllPremium, getPremiumById, updatePremium } from "../controllers/premiumController.js";
 import { createPayment, deletePayment, getAllPayments, getMySubscription, getPaymentById, updatePayment } from "../controllers/paymentController.js";
+import { addReadingTest, getAllReadingTests, getReadingTest } from "../controllers/readingController.js";
 
 const indexRoutes = express.Router()
 
@@ -16,7 +17,6 @@ indexRoutes.get("/getRegisterById/:id", UserAuth, getRegisterById)
 indexRoutes.get("/getAllUsers", UserAuth, getAllUsers)
 indexRoutes.put("/updateProfileUser/:id", UserAuth, isUser, upload.single("image"), convertJfifToJpeg, updateProfileUser)
 indexRoutes.put("/updateProfileAdmin/:id", UserAuth, isAdmin, upload.single("image"), convertJfifToJpeg, updateProfileAdmin)
-
 
 //login Routes
 indexRoutes.post('/loginUser', loginUser);
@@ -55,6 +55,12 @@ indexRoutes.put("/updatePayment/:id", UserAuth, isUser, updatePayment)
 indexRoutes.delete("/deletePayment/:id", UserAuth, isUser, deletePayment)
 indexRoutes.get('/getMySubscription', UserAuth, isUser, getMySubscription);
 
-
+// Reading Module Routes
+// Admin: Add a new reading test
+indexRoutes.post("/admin/reading-tests", UserAuth, isAdmin, addReadingTest);
+// User: Get all reading tests
+indexRoutes.get("/reading-tests", UserAuth, getAllReadingTests);
+// User: Get a single reading test
+indexRoutes.get("/reading-tests/:id", UserAuth, getReadingTest);
 
 export default indexRoutes
