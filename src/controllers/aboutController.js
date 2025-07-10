@@ -76,16 +76,17 @@ export const updateAbout = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid About Id")
         }
-
-        const about = await About.findByIdAndUpdate(id, { ...req.body }, { new: true })
+        let about = await About.findById(id)
 
         if (!about) {
             return sendBadRequestResponse(res, "About not found!!!")
         }
+        about = await About.findByIdAndUpdate(id, { ...req.body }, { new: true })
+
 
         return sendSuccessResponse(res, "About updated Successfully", about)
 
-    } catch (error) {   
+    } catch (error) {
         return ThrowError(res, 500, error.message)
     }
 }
@@ -98,10 +99,11 @@ export const deleteAbout = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid About Id")
         }
 
-        const about = await About.findByIdAndDelete(id);
+        let about = await About.findById(id)
         if (!about) {
             return sendBadRequestResponse(res, 'About not found');
         }
+        about = await About.findByIdAndDelete(id);
 
         return sendSuccessResponse(res, "About deleted Successfully...")
     } catch (error) {

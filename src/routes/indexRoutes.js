@@ -7,7 +7,12 @@ import { addAbout, deleteAbout, getAboutById, getAllAbout, updateAbout } from ".
 import { addPrivacyPolicy, deletePrivacyPolicy, getAllPrivacyPolicy, getPrivacyPolicyById, updatePrivacyPolicy } from "../controllers/privacyPolicyController.js";
 import { createPremium, deletePremium, getAllPremium, getPremiumById, updatePremium } from "../controllers/premiumController.js";
 import { createPayment, deletePayment, getAllPayments, getMySubscription, getPaymentById, updatePayment } from "../controllers/paymentController.js";
-import { addReadingTest, getAllReadingTests, getReadingTest } from "../controllers/readingController.js";
+import { addTestDetails, deleteTestDetails, getAllTestDetails, getTestDetailsById, updateTestDetails } from "../controllers/testDetailsController.js";
+import { addReadingTest, deleteReadingTest, getAllReadingTest, getReadingTestById, updateReadingTest } from "../controllers/readingTestController.js";
+import { addReadingSection, deleteReadingSection, getAllReadingSection, getReadingSectionById, getSectionsByReadingTest, updateReadingSection } from "../controllers/readingSectionController.js";
+import { addParagraph, deleteParagraph, getAllParagraphs, getParagraphById, getParagraphsBySection, updateParagraph } from "../controllers/paragraphController.js";
+import { addQuestion, checkBulkUserAnswers, deleteQuestion, getAllQuestions, getQuestionById, getSectionCorrectAnswers, updateQuestion } from "../controllers/questionController.js";
+import { checkUserAnswer, submitSectionAnswers } from "../controllers/userAnswerController.js";
 
 const indexRoutes = express.Router()
 
@@ -55,12 +60,48 @@ indexRoutes.put("/updatePayment/:id", UserAuth, isUser, updatePayment)
 indexRoutes.delete("/deletePayment/:id", UserAuth, isUser, deletePayment)
 indexRoutes.get('/getMySubscription', UserAuth, isUser, getMySubscription);
 
-// Reading Module Routes
-// Admin: Add a new reading test
-indexRoutes.post("/admin/reading-tests", UserAuth, isAdmin, addReadingTest);
-// User: Get all reading tests
-indexRoutes.get("/reading-tests", UserAuth, getAllReadingTests);
-// User: Get a single reading test
-indexRoutes.get("/reading-tests/:id", UserAuth, getReadingTest);
+//testDetails Routes
+indexRoutes.post("/addTestDetails", UserAuth, isAdmin, addTestDetails)
+indexRoutes.get("/getAllTestDetails", UserAuth, getAllTestDetails)
+indexRoutes.get("/getTestDetailsById/:id", UserAuth, getTestDetailsById)
+indexRoutes.put("/updateTestDetails/:id", UserAuth, isAdmin, updateTestDetails)
+indexRoutes.delete("/deleteTestDetails/:id", UserAuth, isAdmin, deleteTestDetails)
+
+//ReadingTest Routes
+indexRoutes.post("/addReadingTest", UserAuth, isAdmin, addReadingTest)
+indexRoutes.get("/getAllReadingTest", UserAuth, getAllReadingTest)
+indexRoutes.get("/getReadingTestById/:id", UserAuth, getReadingTestById)
+indexRoutes.put("/updateReadingTest/:id", UserAuth, isAdmin, updateReadingTest)
+indexRoutes.delete("/deleteReadingTest/:id", UserAuth, isAdmin, deleteReadingTest)
+
+//ReadingSection Routes
+indexRoutes.post("/addReadingSection", UserAuth, isAdmin, addReadingSection)
+indexRoutes.get("/getAllReadingSection", UserAuth, getAllReadingSection)
+indexRoutes.get("/getReadingSectionById/:id", UserAuth, getReadingSectionById)
+indexRoutes.put("/updateReadingSection/:id", UserAuth, isAdmin, updateReadingSection)
+indexRoutes.delete("/deleteReadingSection/:id", UserAuth, isAdmin, deleteReadingSection)
+indexRoutes.get("/getSectionsByReadingTest/:readingTestId", UserAuth, isAdmin, getSectionsByReadingTest)
+
+//Paragraph Routes
+indexRoutes.post("/addParagraph", UserAuth, isAdmin, addParagraph)
+indexRoutes.get("/getAllParagraphs", UserAuth, getAllParagraphs)
+indexRoutes.get("/getParagraphById/:id", UserAuth, getParagraphById)
+indexRoutes.put("/updateParagraph/:id", UserAuth, isAdmin, updateParagraph)
+indexRoutes.delete("/deleteParagraph/:id", UserAuth, isAdmin, deleteParagraph)
+indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth, isAdmin, getParagraphsBySection)
+
+//Question Routes
+indexRoutes.post("/addQuestion", UserAuth, isAdmin, addQuestion)
+indexRoutes.get("/getAllQuestions", UserAuth, getAllQuestions)
+indexRoutes.get("/getQuestionById/:id", UserAuth, getQuestionById)
+indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateQuestion)
+indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteQuestion)
+indexRoutes.post("/checkBulkUserAnswers", UserAuth, isUser, checkBulkUserAnswers)
+indexRoutes.get("/getSectionCorrectAnswers/:readingSectionId", UserAuth, getSectionCorrectAnswers)
+
+//userAnswer Routes
+indexRoutes.post("/submitSectionAnswers", UserAuth, isUser, submitSectionAnswers)
+indexRoutes.post("/checkUserAnswer", UserAuth,  checkUserAnswer)
+
 
 export default indexRoutes

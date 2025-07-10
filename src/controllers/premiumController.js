@@ -85,16 +85,19 @@ export const updatePremium = async (req, res) => {
         if (req.body.duration && !allowedDurations.includes(req.body.duration)) {
             return ThrowError(res, 400, `Invalid duration. Allowed values: ${allowedDurations.join(", ")}`);
         }
-        const updatedPremium = await Premium.findByIdAndUpdate(
+
+        let premium = await Premium.findById(id);
+
+        if (!premium) {
+            return ThrowError(res, 404, 'Premium plan not found');
+        }
+        premium = await Premium.findByIdAndUpdate(
             id,
             { ...req.body },
             { new: true }
         );
-        if (!updatedPremium) {
-            return ThrowError(res, 404, 'Premium plan not found');
-        }
 
-        return sendSuccessResponse(res, "Premium updated Successfully...", updatePremium)
+        return sendSuccessResponse(res, "Premium updated Successfully...", premium)
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
@@ -110,10 +113,12 @@ export const deletePremium = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return ThrowError(res, 400, 'Invalid Premium ID format');
         }
-        const premium = await Premium.findByIdAndDelete(id);
+
+        let premium = await Premium.findById(id);
         if (!premium) {
             return ThrowError(res, 404, 'Premium plan not found');
         }
+        premium = await Premium.findByIdAndDelete(id);
 
         return sendSuccessResponse(res, "Premium deleted Successfully...", premium)
     } catch (error) {
