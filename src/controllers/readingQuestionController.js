@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import Question from "../models/questionModel.js";
+import ReadingQuestion from "../models/readingQuestionModel.js";
 import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
 import { ThrowError } from "../utils/ErrorUtils.js";
 
-// Admin: Add a question
-export const addQuestion = async (req, res) => {
+// Admin: Add a ReadingQuestion
+export const addReadingQuestion = async (req, res) => {
     try {
         const { readingSectionId, questionText, type, options, answer, position } = req.body;
         if (!readingSectionId || !questionText || !type || !answer) {
@@ -17,11 +17,11 @@ export const addQuestion = async (req, res) => {
             return sendBadRequestResponse(res, "MCQ type requires at least two options");
         }
         // Prevent duplicate questionText in the same section
-        const existingQuestion = await Question.findOne({ readingSectionId, questionText });
+        const existingQuestion = await ReadingQuestion.findOne({ readingSectionId, questionText });
         if (existingQuestion) {
             return sendBadRequestResponse(res, "This question already exists in the selected section!");
         }
-        const newQuestion = await Question.create({
+        const newQuestion = await ReadingQuestion.create({
             readingSectionId,
             questionText,
             type,
@@ -36,9 +36,9 @@ export const addQuestion = async (req, res) => {
 };
 
 // Get all questions
-export const getAllQuestions = async (req, res) => {
+export const getAllReadingQuestions = async (req, res) => {
     try {
-        const questions = await Question.find({});
+        const questions = await ReadingQuestion.find({});
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No Questions found!");
         }
@@ -49,13 +49,13 @@ export const getAllQuestions = async (req, res) => {
 };
 
 // Get question by id
-export const getQuestionById = async (req, res) => {
+export const getReadingQuestionById = async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Question Id");
         }
-        const question = await Question.findById(id);
+        const question = await ReadingQuestion.findById(id);
         if (!question) {
             return sendBadRequestResponse(res, "Question not found");
         }
@@ -66,13 +66,13 @@ export const getQuestionById = async (req, res) => {
 };
 
 // Update question
-export const updateQuestion = async (req, res) => {
+export const updateReadingQuestion = async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Question Id");
         }
-        let question = await Question.findById(id);
+        let question = await ReadingQuestion.findById(id);
         if (!question) {
             return sendBadRequestResponse(res, "Question not found");
         }
@@ -84,7 +84,7 @@ export const updateQuestion = async (req, res) => {
         if (req.body.readingSectionId && !mongoose.Types.ObjectId.isValid(req.body.readingSectionId)) {
             return sendBadRequestResponse(res, "Invalid ReadingSection Id");
         }
-        question = await Question.findByIdAndUpdate(id, { ...req.body }, { new: true });
+        question = await ReadingQuestion.findByIdAndUpdate(id, { ...req.body }, { new: true });
         return sendSuccessResponse(res, "Question Updated Successfully...", question);
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -92,17 +92,17 @@ export const updateQuestion = async (req, res) => {
 };
 
 // Delete question
-export const deleteQuestion = async (req, res) => {
+export const deleteReadingQuestion = async (req, res) => {
     try {
         const { id } = req.params;
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Question Id");
         }
-        let question = await Question.findById(id);
+        let question = await ReadingQuestion.findById(id);
         if (!question) {
             return sendBadRequestResponse(res, "Question not found");
         }
-        question = await Question.findByIdAndDelete(id);
+        question = await ReadingQuestion.findByIdAndDelete(id);
         return sendSuccessResponse(res, "Question Deleted Successfully...", question);
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -110,7 +110,7 @@ export const deleteQuestion = async (req, res) => {
 };
 
 // Bulk answer check (user submits multiple answers)
-export const checkBulkUserAnswers = async (req, res) => {
+export const checkReadingBulkUserAnswers = async (req, res) => {
     try {
         const { answers } = req.body;
         if (!Array.isArray(answers) || answers.length === 0) {
@@ -119,7 +119,7 @@ export const checkBulkUserAnswers = async (req, res) => {
         // Collect all questionIds
         const questionIds = answers.map(ans => ans.questionId);
         // Fetch all questions in one go
-        const questions = await Question.find({ _id: { $in: questionIds } });
+        const questions = await ReadingQuestion.find({ _id: { $in: questionIds } });
         // Map for quick lookup
         const questionMap = {};
         questions.forEach(q => { questionMap[q._id.toString()] = q; });
@@ -143,13 +143,13 @@ export const checkBulkUserAnswers = async (req, res) => {
     }
 };
 
-export const getSectionCorrectAnswers = async (req, res) => {
+export const getReadingSectionCorrectAnswers = async (req, res) => {
     try {
         const { readingSectionId } = req.params;
         if (!mongoose.Types.ObjectId.isValid(readingSectionId)) {
             return sendBadRequestResponse(res, "Invalid readingSectionId");
         }
-        const questions = await Question.find({ readingSectionId });
+        const questions = await ReadingQuestion.find({ readingSectionId });
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No questions found for this section");
         }

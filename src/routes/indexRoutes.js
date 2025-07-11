@@ -11,8 +11,14 @@ import { addTestDetails, deleteTestDetails, getAllTestDetails, getTestDetailsByI
 import { addReadingTest, deleteReadingTest, getAllReadingTest, getReadingTestById, updateReadingTest } from "../controllers/readingTestController.js";
 import { addReadingSection, deleteReadingSection, getAllReadingSection, getReadingSectionById, getSectionsByReadingTest, updateReadingSection } from "../controllers/readingSectionController.js";
 import { addParagraph, deleteParagraph, getAllParagraphs, getParagraphById, getParagraphsBySection, updateParagraph } from "../controllers/paragraphController.js";
-import { addQuestion, checkBulkUserAnswers, deleteQuestion, getAllQuestions, getQuestionById, getSectionCorrectAnswers, updateQuestion } from "../controllers/questionController.js";
-import { checkUserAnswer, submitSectionAnswers } from "../controllers/userAnswerController.js";
+import { addReadingQuestion, checkReadingBulkUserAnswers, deleteReadingQuestion, getAllReadingQuestions, getReadingQuestionById, getReadingSectionCorrectAnswers, updateReadingQuestion } from "../controllers/readingQuestionController.js";
+import { checkReadingUserAnswer, submitReadingSectionAnswers } from "../controllers/readingUserAnswerController.js";
+import { addWritingTest, deleteWritingTest, getAllWritingTest, getWritingTestById, updateWritingTest } from "../controllers/writingTestController.js";
+import { addWritingSection, deleteWritingSection, getAllWritingSection, getWritingSectionById, updateWritingSection } from "../controllers/writingSectionController.js";
+import { addWritingQuestion, checkWritingBulkUserAnswers, deleteWritingQuestion, getAllWritingQuestions, getWritingQuestionById, updateWritingQuestion, getWritingSectionCorrectAnswers } from "../controllers/writingQuestionController.js";
+import { checkWritingUserAnswer, submitWritingSectionAnswers } from "../controllers/writingUserAnswerController.js";
+import { addListeningTest, deleteListeningTest, getAllListeningTest, getListeningTestById, updateListeningTest } from "../controllers/listeningTestController.js";
+import { addListeningSection, deleteListeningSection, getAllListeningSection, getListeningSectionById, getSectionsByListeningTest, updateListeningSection } from "../controllers/listeningSectionController.js";
 
 const indexRoutes = express.Router()
 
@@ -90,18 +96,62 @@ indexRoutes.put("/updateParagraph/:id", UserAuth, isAdmin, updateParagraph)
 indexRoutes.delete("/deleteParagraph/:id", UserAuth, isAdmin, deleteParagraph)
 indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth, isAdmin, getParagraphsBySection)
 
-//Question Routes
-indexRoutes.post("/addQuestion", UserAuth, isAdmin, addQuestion)
-indexRoutes.get("/getAllQuestions", UserAuth, getAllQuestions)
-indexRoutes.get("/getQuestionById/:id", UserAuth, getQuestionById)
-indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateQuestion)
-indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteQuestion)
-indexRoutes.post("/checkBulkUserAnswers", UserAuth, isUser, checkBulkUserAnswers)
-indexRoutes.get("/getSectionCorrectAnswers/:readingSectionId", UserAuth, getSectionCorrectAnswers)
+//ReadingQuestion Routes
+indexRoutes.post("/addQuestion", UserAuth, isAdmin, addReadingQuestion)
+indexRoutes.get("/getAllQuestions", UserAuth, getAllReadingQuestions)
+indexRoutes.get("/getQuestionById/:id", UserAuth, getReadingQuestionById)
+indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateReadingQuestion)
+indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteReadingQuestion)
+indexRoutes.post("/checkReadingBulkUserAnswers", UserAuth, isUser, checkReadingBulkUserAnswers)
+indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, getReadingSectionCorrectAnswers)
 
 //userAnswer Routes
-indexRoutes.post("/submitSectionAnswers", UserAuth, isUser, submitSectionAnswers)
-indexRoutes.post("/checkUserAnswer", UserAuth,  checkUserAnswer)
+indexRoutes.post("/submitReadingSectionAnswers", UserAuth, isUser, submitReadingSectionAnswers)
+indexRoutes.post("/checkReadingUserAnswer", UserAuth, checkReadingUserAnswer)
 
 
-export default indexRoutes
+//writingTest Routes
+indexRoutes.post("/addWritingTest", UserAuth, isAdmin, addWritingTest)
+indexRoutes.get("/getAllWritingTest", UserAuth, getAllWritingTest)
+indexRoutes.get("/getWritingTestById/:id", UserAuth, getWritingTestById)
+indexRoutes.put("/updateWritingTest/:id", UserAuth, isAdmin, updateWritingTest)
+indexRoutes.delete("/deleteWritingTest/:id", UserAuth, isAdmin, deleteWritingTest)
+
+//writingSection Routes
+indexRoutes.post("/addWritingSection", UserAuth, isAdmin, upload.single("writing_title_image"), convertJfifToJpeg, addWritingSection)
+indexRoutes.get("/getAllWritingSection", UserAuth, getAllWritingSection)
+indexRoutes.get("/getWritingSectionById/:id", UserAuth, getWritingSectionById)
+indexRoutes.put("/updateWritingSection/:id", UserAuth, isAdmin, upload.single("writing_title_image"), convertJfifToJpeg, updateWritingSection)
+indexRoutes.delete("/deleteWritingSection/:id", UserAuth, isAdmin, deleteWritingSection)
+
+//writingQuestion Routes
+indexRoutes.post("/addWritingQuestion", UserAuth, isAdmin, upload.single("writing_question_image"), convertJfifToJpeg, addWritingQuestion);
+indexRoutes.get("/getAllWritingQuestions", UserAuth, getAllWritingQuestions)
+indexRoutes.get("/getWritingQuestionById/:id", UserAuth, getWritingQuestionById)
+indexRoutes.put("/updateWritingQuestion/:id", UserAuth, isAdmin, upload.single("writing_question_image"), convertJfifToJpeg, updateWritingQuestion)
+indexRoutes.delete("/deleteWritingQuestion/:id", UserAuth, isAdmin, deleteWritingQuestion)
+indexRoutes.post("/checkWritingBulkUserAnswers", UserAuth, isUser, checkWritingBulkUserAnswers)
+indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, getWritingSectionCorrectAnswers)
+
+//writingUserAnswer Routes
+indexRoutes.post("/submitWritingSectionAnswers", UserAuth, isUser, submitWritingSectionAnswers)
+indexRoutes.post("/checkWritingUserAnswer", UserAuth, checkWritingUserAnswer)
+
+
+//ListeningTest Routes
+indexRoutes.post("/addListeningTest", UserAuth, isAdmin, addListeningTest)
+indexRoutes.get("/getAllListeningTest", UserAuth, getAllListeningTest)
+indexRoutes.get("/getListeningTestById/:id", UserAuth, getListeningTestById)
+indexRoutes.put("/updateListeningTest/:id", UserAuth, isAdmin, updateListeningTest)
+indexRoutes.delete("/deleteListeningTest/:id", UserAuth, isAdmin, deleteListeningTest)
+
+//ListeningSection Routes
+indexRoutes.post("/addListeningSection", UserAuth, isAdmin, addListeningSection)
+indexRoutes.get("/getAllListeningSection", UserAuth, getAllListeningSection)
+indexRoutes.get("/getListeningSectionById/:id", UserAuth, getListeningSectionById)
+indexRoutes.put("/updateListeningSection/:id", UserAuth, isAdmin, updateListeningSection)
+indexRoutes.delete("/deleteListeningSection/:id", UserAuth, isAdmin, deleteListeningSection)
+indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, isAdmin, getSectionsByListeningTest)
+
+
+export default indexRoutes  

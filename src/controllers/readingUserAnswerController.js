@@ -1,9 +1,9 @@
-import UserAnswer from "../models/userAnswerModel.js";
-import Question from "../models/questionModel.js";
+import ReadingUserAnswer from "../models/readingUserAnswerModel.js";
+import Question from "../models/readingQuestionModel.js";
 import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
 import { ThrowError } from "../utils/ErrorUtils.js";
 
-export const submitSectionAnswers = async (req, res) => {
+export const submitReadingSectionAnswers = async (req, res) => {
     try {
         const { userId, readingSectionId, answers } = req.body;
         if (!userId || !readingSectionId || !Array.isArray(answers) || answers.length === 0) {
@@ -31,7 +31,7 @@ export const submitSectionAnswers = async (req, res) => {
         });
 
         // Save or update user answers for this section
-        const userSectionAnswer = await UserAnswer.findOneAndUpdate(
+        const userSectionAnswer = await ReadingUserAnswer.findOneAndUpdate(
             { userId, readingSectionId },
             { userId, readingSectionId, answers: checkedAnswers },
             { upsert: true, new: true }
@@ -44,7 +44,7 @@ export const submitSectionAnswers = async (req, res) => {
 };
 
 
-export const checkUserAnswer = async (req, res) => {
+export const checkReadingUserAnswer = async (req, res) => {
     try {
         const { questionId, userAnswer } = req.body;
         if (!questionId || userAnswer === undefined) {

@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const userAnswerSchema = new mongoose.Schema({
+const readingUserAnswerSchema = new mongoose.Schema({
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -21,4 +21,4 @@ const userAnswerSchema = new mongoose.Schema({
     ]
 }, { timestamps: true });
 
-export default mongoose.model("UserAnswer", userAnswerSchema);
+export default mongoose.model("ReadingUserAnswer", readingUserAnswerSchema);

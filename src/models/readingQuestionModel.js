@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const questionSchema = new mongoose.Schema({
+const readingQuestionSchema = new mongoose.Schema({
     readingSectionId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "ReadingSection",
@@ -23,4 +23,4 @@ const questionSchema = new mongoose.Schema({
     position: Number
 }, { timestamps: true });
 
-export default mongoose.model("Question", questionSchema); 
+export default mongoose.model("ReadingQuestion", readingQuestionSchema); 

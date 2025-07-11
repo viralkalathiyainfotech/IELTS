@@ -16,18 +16,10 @@ const storage = multer.diskStorage({
         // Create different folders based on field name
         let uploadPath = 'public/images';
 
-        if (file.fieldname === 'companyImage') {
-            uploadPath = 'public/companyImage';
-        } else if (file.fieldname === 'thumbnail') {
-            uploadPath = 'public/thumbnails';
-        } else if (file.fieldname === 'video') {
-            uploadPath = 'public/videos';
-        } else if (file.fieldname === 'profileImage') {
-            uploadPath = 'public/profileImages';
-        } else if (file.fieldname === 'mentorImage') {
-            uploadPath = 'public/mentorImages';
-        } else if (file.fieldname === 'language_thumbnail') {
-            uploadPath = 'public/language_thumbnail';
+        if (file.fieldname === 'writing_title_image') {
+            uploadPath = 'public/writing_title_image';
+        } else if (file.fieldname === 'writing_question_image') {
+            uploadPath = 'public/writing_question_image';
         }
 
         // Create directory if it doesn't exist
@@ -45,7 +37,7 @@ const storage = multer.diskStorage({
 // File filter function
 const fileFilter = (req, file, cb) => {
     // Accept files with common image field names
-    const allowedFieldNames = ['image', 'companyImage', 'thumbnail', 'profileImage', 'courseImage', 'video', 'mentorImage', 'language_thumbnail'];
+    const allowedFieldNames = ['image', 'writing_title_image','writing_question_image'];
 
     if (allowedFieldNames.includes(file.fieldname)) {
         cb(null, true);
