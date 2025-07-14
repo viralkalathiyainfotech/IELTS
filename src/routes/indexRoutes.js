@@ -1,5 +1,5 @@
 import express from "express";
-import { upload, convertJfifToJpeg, listeningAudioUpload } from "../middlewares/imageupload.js";
+import { upload, convertJfifToJpeg } from "../middlewares/imageupload.js";
 import { isAdmin, isUser, UserAuth } from "../middlewares/auth.js";
 import { createRegister, getRegisterById, getAllUsers, updateProfileUser, updateProfileAdmin } from "../controllers/registerController.js";
 import { changePassword, forgotPassword, loginUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
@@ -19,11 +19,6 @@ import { addWritingQuestion, checkWritingBulkUserAnswers, deleteWritingQuestion,
 import { checkWritingUserAnswer, submitWritingSectionAnswers } from "../controllers/writingUserAnswerController.js";
 import { addListeningTest, deleteListeningTest, getAllListeningTest, getListeningTestById, updateListeningTest } from "../controllers/listeningTestController.js";
 import { addListeningSection, deleteListeningSection, getAllListeningSection, getListeningSectionById, getSectionsByListeningTest, updateListeningSection } from "../controllers/listeningSectionController.js";
-import { createListeningAudio, getAllListeningAudios, getListeningAudioById, updateListeningAudio, deleteListeningAudio, getAudioBySection } from '../controllers/listeningAudioController.js';
-import { addListeningQuestion, checkListeningBulkUserAnswers, deleteListeningQuestion, getAllListeningQuestions, getListeningQuestionById, getListeningSectionCorrectAnswers, updateListeningQuestion } from "../controllers/listeningQuestionController.js";
-import { checkListeningUserAnswer, submitListeningSectionAnswers } from "../controllers/listeningUserAnswerController.js";
-import { createSpekingTest, deleteSpeakingTest, getAllSpeakingTest, getSpeakingTestById, updateSpeakingTest } from "../controllers/speakingTestController.js";
-import { addSpeakingTopic, deleteSpeakingTopic, getAllSpeakingTopic, getSpeakingTopicById, updateSpeakingTopic } from "../controllers/speakingTopicController.js";
 
 const indexRoutes = express.Router()
 
@@ -78,9 +73,6 @@ indexRoutes.get("/getTestDetailsById/:id", UserAuth, getTestDetailsById)
 indexRoutes.put("/updateTestDetails/:id", UserAuth, isAdmin, updateTestDetails)
 indexRoutes.delete("/deleteTestDetails/:id", UserAuth, isAdmin, deleteTestDetails)
 
-
-///////////////////////////////////////////////////// ReadigTest /////////////////////////////////////////////////////////
-
 //ReadingTest Routes
 indexRoutes.post("/addReadingTest", UserAuth, isAdmin, addReadingTest)
 indexRoutes.get("/getAllReadingTest", UserAuth, getAllReadingTest)
@@ -118,9 +110,6 @@ indexRoutes.post("/submitReadingSectionAnswers", UserAuth, isUser, submitReading
 indexRoutes.post("/checkReadingUserAnswer", UserAuth, checkReadingUserAnswer)
 
 
-///////////////////////////////////////////////////// WritingTest /////////////////////////////////////////////////////////
-
-
 //writingTest Routes
 indexRoutes.post("/addWritingTest", UserAuth, isAdmin, addWritingTest)
 indexRoutes.get("/getAllWritingTest", UserAuth, getAllWritingTest)
@@ -149,10 +138,6 @@ indexRoutes.post("/submitWritingSectionAnswers", UserAuth, isUser, submitWriting
 indexRoutes.post("/checkWritingUserAnswer", UserAuth, checkWritingUserAnswer)
 
 
-
-///////////////////////////////////////////////////// ListeningTest /////////////////////////////////////////////////////////
-
-
 //ListeningTest Routes
 indexRoutes.post("/addListeningTest", UserAuth, isAdmin, addListeningTest)
 indexRoutes.get("/getAllListeningTest", UserAuth, getAllListeningTest)
@@ -167,45 +152,6 @@ indexRoutes.get("/getListeningSectionById/:id", UserAuth, getListeningSectionByI
 indexRoutes.put("/updateListeningSection/:id", UserAuth, isAdmin, updateListeningSection)
 indexRoutes.delete("/deleteListeningSection/:id", UserAuth, isAdmin, deleteListeningSection)
 indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, isAdmin, getSectionsByListeningTest)
-
-//ListeningAudio Routes
-indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), createListeningAudio);
-indexRoutes.get('/getAllListeningAudios', UserAuth, getAllListeningAudios);
-indexRoutes.get('/getListeningAudioById/:id', UserAuth, getListeningAudioById);
-indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), updateListeningAudio);
-indexRoutes.delete('/deleteListeningAudio/:id', UserAuth, isAdmin, deleteListeningAudio);
-indexRoutes.get("/getAudioBySection/:listeningSectionId", UserAuth, isAdmin, getAudioBySection)
-
-//listeningQuestion Routes
-indexRoutes.post("/addListeningQuestion", UserAuth, isAdmin, addListeningQuestion);
-indexRoutes.get("/getAllListeningQuestions", UserAuth, getAllListeningQuestions)
-indexRoutes.get("/getListeningQuestionById/:id", UserAuth, getListeningQuestionById)
-indexRoutes.put("/updateListeningQuestion/:id", UserAuth, isAdmin, updateListeningQuestion)
-indexRoutes.delete("/deleteListeningQuestion/:id", UserAuth, isAdmin, deleteListeningQuestion)
-indexRoutes.post("/checkListeningBulkUserAnswers", UserAuth, isUser, checkListeningBulkUserAnswers)
-indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAuth, getListeningSectionCorrectAnswers)
-
-//writingUserAnswer Routes
-indexRoutes.post("/submitListeningSectionAnswers", UserAuth, isUser, submitListeningSectionAnswers)
-indexRoutes.post("/checkListeningUserAnswer", UserAuth, checkListeningUserAnswer)
-
-
-///////////////////////////////////////////////////// SpeakingTest /////////////////////////////////////////////////////////
-
-
-//SpeakingTest Routes
-indexRoutes.post("/createSpekingTest", UserAuth, isAdmin, createSpekingTest)
-indexRoutes.get("/getAllSpeakingTest", UserAuth, getAllSpeakingTest)
-indexRoutes.get("/getSpeakingTestById/:id", UserAuth, getSpeakingTestById)
-indexRoutes.put("/updateSpeakingTest/:id", UserAuth, isAdmin, updateSpeakingTest)
-indexRoutes.delete("/deleteSpeakingTest/:id", UserAuth, isAdmin, deleteSpeakingTest)
-
-//SpeakingTopic Routes
-indexRoutes.post("/addSpeakingTopic", UserAuth, isAdmin, addSpeakingTopic)
-indexRoutes.get("/getAllSpeakingTopic", UserAuth, getAllSpeakingTopic)
-indexRoutes.get("/getSpeakingTopicById/:id", UserAuth, getSpeakingTopicById)
-indexRoutes.put("/updateSpeakingTopic/:id", UserAuth, isAdmin, updateSpeakingTopic)
-indexRoutes.delete("/deleteSpeakingTopic/:id", UserAuth, isAdmin, deleteSpeakingTopic)
 
 
 export default indexRoutes  

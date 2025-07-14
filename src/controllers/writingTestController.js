@@ -40,7 +40,7 @@ export const getAllWritingTest = async (req, res) => {
         return ThrowError(res, 500, error.message)
     }
 }
-                
+
 export const getWritingTestById = async (req, res) => {
     try {
         const { id } = req.params
