@@ -5,6 +5,7 @@ import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUt
 import { ThrowError } from "../utils/ErrorUtils.js";
 import fs from "fs";
 import path from "path";
+import stringSimilarity from "string-similarity";
 
 // Admin: Add a WritingQuestion
 export const addWritingQuestion = async (req, res) => {
@@ -273,3 +274,4 @@ export const getWritingSectionCorrectAnswers = async (req, res) => {
         return sendBadRequestResponse(res, error.message);
     }
 };
+

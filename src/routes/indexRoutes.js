@@ -1,5 +1,5 @@
 import express from "express";
-import { upload, convertJfifToJpeg, listeningAudioUpload } from "../middlewares/imageupload.js";
+import { upload, convertJfifToJpeg, listeningAudioUpload, speakingAudioUpload } from "../middlewares/imageupload.js";
 import { isAdmin, isUser, UserAuth } from "../middlewares/auth.js";
 import { createRegister, getRegisterById, getAllUsers, updateProfileUser, updateProfileAdmin } from "../controllers/registerController.js";
 import { changePassword, forgotPassword, loginUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
@@ -24,6 +24,9 @@ import { addListeningQuestion, checkListeningBulkUserAnswers, deleteListeningQue
 import { checkListeningUserAnswer, submitListeningSectionAnswers } from "../controllers/listeningUserAnswerController.js";
 import { createSpekingTest, deleteSpeakingTest, getAllSpeakingTest, getSpeakingTestById, updateSpeakingTest } from "../controllers/speakingTestController.js";
 import { addSpeakingTopic, deleteSpeakingTopic, getAllSpeakingTopic, getSpeakingTopicById, updateSpeakingTopic } from "../controllers/speakingTopicController.js";
+import { addSpeakingQuestion, deleteSpeakingQuestion, getAllSpeakingQuestions, getSpeakingQuestionById, updateSpeakingQuestion, uploadUserSpeakingAnswer } from "../controllers/speakingQuestionController.js";
+import { submitSpeakingSectionAnswers } from "../controllers/speakingUserAnswerController.js";
+
 
 const indexRoutes = express.Router()
 
@@ -144,6 +147,7 @@ indexRoutes.delete("/deleteWritingQuestion/:id", UserAuth, isAdmin, deleteWritin
 indexRoutes.post("/checkWritingBulkUserAnswers", UserAuth, isUser, checkWritingBulkUserAnswers)
 indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, getWritingSectionCorrectAnswers)
 
+
 //writingUserAnswer Routes
 indexRoutes.post("/submitWritingSectionAnswers", UserAuth, isUser, submitWritingSectionAnswers)
 indexRoutes.post("/checkWritingUserAnswer", UserAuth, checkWritingUserAnswer)
@@ -206,6 +210,20 @@ indexRoutes.get("/getAllSpeakingTopic", UserAuth, getAllSpeakingTopic)
 indexRoutes.get("/getSpeakingTopicById/:id", UserAuth, getSpeakingTopicById)
 indexRoutes.put("/updateSpeakingTopic/:id", UserAuth, isAdmin, updateSpeakingTopic)
 indexRoutes.delete("/deleteSpeakingTopic/:id", UserAuth, isAdmin, deleteSpeakingTopic)
+
+//SpeakingQuestion Routes
+indexRoutes.post("/addSpeakingQuestion", UserAuth, isAdmin, addSpeakingQuestion);
+indexRoutes.get("/getAllSpeakingQuestions", UserAuth, getAllSpeakingQuestions)
+indexRoutes.get("/getSpeakingQuestionById/:id", UserAuth, getSpeakingQuestionById)
+indexRoutes.put("/updateSpeakingQuestion/:id", UserAuth, isAdmin, updateSpeakingQuestion)
+indexRoutes.delete("/deleteSpeakingQuestion/:id", UserAuth, isAdmin, deleteSpeakingQuestion)
+
+//SpeakingUserAnswer Routes
+indexRoutes.post("/submitSpeakingSectionAnswers", UserAuth, isUser, submitSpeakingSectionAnswers)
+
+
+// User uploads speaking answer audio
+indexRoutes.post("/uploadUserSpeakingAnswer", UserAuth, isUser, speakingAudioUpload.single('speakingAudio'), uploadUserSpeakingAnswer);
 
 
 export default indexRoutes  

@@ -15,7 +15,7 @@ export const submitWritingSectionAnswers = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid userId");
         }
         if (!mongoose.Types.ObjectId.isValid(writingSectionId)) {
-            return sendBadRequestResponse(res, "Invalid writingSectionId"); 
+            return sendBadRequestResponse(res, "Invalid writingSectionId");
         }
         // Fetch all questions
         const questionIds = answers.map(ans => ans.questionId);
