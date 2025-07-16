@@ -181,6 +181,7 @@ export const checkWritingBulkUserAnswers = async (req, res) => {
         const results = req.body.answers.map(ans => {
             const q = questionMap[ans.questionId];
             let isCorrect = false;
+            let similarityPercentage = 0;
 
             // Ensure userAnswer is a string
             let userAnswer = ans.userAnswer;
@@ -213,15 +214,19 @@ export const checkWritingBulkUserAnswers = async (req, res) => {
             }
 
             if (q) {
-                isCorrect = correctAnswer.some(ansStr =>
-                    userAnswer.trim().toLowerCase() === String(ansStr).trim().toLowerCase()
+                const similarity = stringSimilarity.compareTwoStrings(
+                    userAnswer.trim().toLowerCase(),
+                    String(correctAnswer[0]).trim().toLowerCase()
                 );
+                similarityPercentage = Math.round(similarity * 100);
+                isCorrect = similarityPercentage >= 60; // Set a threshold for correctness
             }
             return {
                 questionId: ans.questionId,
                 userAnswer,
                 correctAnswer,
-                isCorrect
+                isCorrect,
+                similarityPercentage
             };
         });
         return sendSuccessResponse(res, "Bulk answers checked", results);
