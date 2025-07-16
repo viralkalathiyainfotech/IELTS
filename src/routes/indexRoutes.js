@@ -16,7 +16,7 @@ import { checkReadingUserAnswer, submitReadingSectionAnswers } from "../controll
 import { addWritingTest, deleteWritingTest, getAllWritingTest, getWritingTestById, updateWritingTest } from "../controllers/writingTestController.js";
 import { addWritingSection, deleteWritingSection, getAllWritingSection, getWritingSectionById, updateWritingSection } from "../controllers/writingSectionController.js";
 import { addWritingQuestion, checkWritingBulkUserAnswers, deleteWritingQuestion, getAllWritingQuestions, getWritingQuestionById, updateWritingQuestion, getWritingSectionCorrectAnswers } from "../controllers/writingQuestionController.js";
-import { checkWritingUserAnswer, submitWritingSectionAnswers } from "../controllers/writingUserAnswerController.js";
+import { checkWritingUserAnswer, submitOrUpdateSingleWritingAnswer, submitWritingSectionAnswers } from "../controllers/writingUserAnswerController.js";
 import { addListeningTest, deleteListeningTest, getAllListeningTest, getListeningTestById, updateListeningTest } from "../controllers/listeningTestController.js";
 import { addListeningSection, deleteListeningSection, getAllListeningSection, getListeningSectionById, getSectionsByListeningTest, updateListeningSection } from "../controllers/listeningSectionController.js";
 import { createListeningAudio, getAllListeningAudios, getListeningAudioById, updateListeningAudio, deleteListeningAudio, getAudioBySection } from '../controllers/listeningAudioController.js';
@@ -151,6 +151,8 @@ indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, 
 //writingUserAnswer Routes
 indexRoutes.post("/submitWritingSectionAnswers", UserAuth, isUser, submitWritingSectionAnswers)
 indexRoutes.post("/checkWritingUserAnswer", UserAuth, checkWritingUserAnswer)
+indexRoutes.post("/submitOrUpdateSingleWritingAnswer", UserAuth, submitOrUpdateSingleWritingAnswer)
+
 
 
 

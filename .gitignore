@@ -1,3 +1,5 @@
 /node_modules
 .env
 public/videos
+google-credentials.json
+
