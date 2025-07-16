@@ -159,5 +159,31 @@ const listeningAudioFileFilter = (req, file, cb) => {
 
 const listeningAudioUpload = multer({ storage: listeningAudioStorage, fileFilter: listeningAudioFileFilter });
 
-export { upload, uploadHandlers, handleMulterError, convertJfifToJpeg, readingUpload, listeningAudioUpload };
+const speakingAudioStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const speakingUploadDir = path.join(__dirname, '../../public/userAudio/');
+        if (!fs.existsSync(speakingUploadDir)) {
+            fs.mkdirSync(speakingUploadDir, { recursive: true });
+        }
+        cb(null, speakingUploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+const speakingAudioFileFilter = (req, file, cb) => {
+    // Accept only audio files
+    const allowedTypes = /mp3|wav|m4a/;
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.test(ext)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only audio files are allowed!'), false);
+    }
+};
+
+const speakingAudioUpload = multer({ storage: speakingAudioStorage, fileFilter: speakingAudioFileFilter });
+
+export { upload, uploadHandlers, handleMulterError, convertJfifToJpeg, readingUpload, listeningAudioUpload, speakingAudioUpload };
 export default uploadHandlers;
