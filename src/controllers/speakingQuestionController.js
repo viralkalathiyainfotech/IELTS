@@ -5,7 +5,6 @@ import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUt
 import { ThrowError } from "../utils/ErrorUtils.js";
 import fs from "fs";
 import path from "path";
-import OpenAI from "openai";
 import stringSimilarity from "string-similarity";
 import speech from '@google-cloud/speech';
 

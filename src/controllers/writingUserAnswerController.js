@@ -4,6 +4,7 @@ import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUt
 import { ThrowError } from "../utils/ErrorUtils.js";
 import mongoose from "mongoose";
 import stringSimilarity from "string-similarity";
+import { getAISimilarityScore } from "../utils/aiScoring.js";
 
 // Submit answers for a writing section
 export const submitWritingSectionAnswers = async (req, res) => {
@@ -61,17 +62,9 @@ export const submitWritingSectionAnswers = async (req, res) => {
             }
 
             if (q) {
-                const userAnsNorm = userAnswer.trim().toLowerCase();
-                let maxSimilarity = 0;
-                if (Array.isArray(correctAnswer)) {
-                    for (const ans of correctAnswer) {
-                        const sim = stringSimilarity.compareTwoStrings(userAnsNorm, String(ans).trim().toLowerCase());
-                        if (sim > maxSimilarity) maxSimilarity = sim;
-                    }
-                } else {
-                    maxSimilarity = stringSimilarity.compareTwoStrings(userAnsNorm, String(correctAnswer).trim().toLowerCase());
-                }
-                similarityPercentage = Math.round(maxSimilarity * 100);
+                // Use Gemini AI for similarity
+                const aiResult = await getAISimilarityScore(userAnswer, correctAnswer[0]);
+                similarityPercentage = aiResult.score;
                 isCorrect = similarityPercentage >= 60;
             }
 
@@ -143,22 +136,10 @@ export const checkWritingUserAnswer = async (req, res) => {
             }
         }
 
-        // Match logic
-        const isCorrect = correctAnswer.some(ansStr =>
-            userAns.trim().toLowerCase() === String(ansStr).trim().toLowerCase()
-        );
-
-        const userAnsNorm = userAnswer.trim().toLowerCase();
-        let maxSimilarity = 0;
-        if (Array.isArray(correctAnswer)) {
-            for (const ans of correctAnswer) {
-                const sim = stringSimilarity.compareTwoStrings(userAnsNorm, String(ans).trim().toLowerCase());
-                if (sim > maxSimilarity) maxSimilarity = sim;
-            }
-        } else {
-            maxSimilarity = stringSimilarity.compareTwoStrings(userAnsNorm, String(correctAnswer).trim().toLowerCase());
-        }
-        const similarityPercentage = Math.round(maxSimilarity * 100);
+        // Use Gemini AI for similarity
+        const aiResult = await getAISimilarityScore(userAns, correctAnswer[0]);
+        const similarityPercentage = aiResult.score;
+        const isCorrect = similarityPercentage >= 60;
 
         return res.json({
             success: true,
@@ -166,7 +147,8 @@ export const checkWritingUserAnswer = async (req, res) => {
             userAnswer: userAns,
             correctAnswer,
             isCorrect,
-            similarityPercentage
+            similarityPercentage,
+            aiExplanation: aiResult.explanation
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -222,21 +204,17 @@ export const submitOrUpdateSingleWritingAnswer = async (req, res) => {
                     // leave as is
                 }
             }
-            let maxSimilarity = 0;
-            const userAnsNorm = userAns.trim().toLowerCase();
-            for (const ansStr of correctAnswer) {
-                const correctNorm = String(ansStr).trim().toLowerCase();
-                const sim = stringSimilarity.compareTwoStrings(userAnsNorm, correctNorm);
-                if (sim > maxSimilarity) maxSimilarity = sim;
-            }
-            const similarityPercentage = Math.round(maxSimilarity * 100);
+            // Use Gemini AI for similarity
+            const aiResult = await getAISimilarityScore(userAns, correctAnswer[0]);
+            const similarityPercentage = aiResult.score;
             const isCorrect = similarityPercentage >= 70;
             return {
                 questionId,
                 userAnswer: userAns,
                 isCorrect,
                 correctAnswer,
-                similarityPercentage
+                similarityPercentage,
+                aiExplanation: aiResult.explanation
             };
         };
 
