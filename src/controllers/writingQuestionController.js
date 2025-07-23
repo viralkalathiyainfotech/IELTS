@@ -164,112 +164,40 @@ export const deleteWritingQuestion = async (req, res) => {
     }
 };
 
-// Bulk answer check (user submits multiple answers)
-export const checkWritingBulkUserAnswers = async (req, res) => {
-    try {
-        if (!req.body || !Array.isArray(req.body.answers)) {
-            return sendBadRequestResponse(res, "Answers array is required!");
-        }
-        // Collect all questionIds
-        const questionIds = req.body.answers.map(ans => ans.questionId);
-        // Fetch all questions in one go
-        const questions = await WritingQuestion.find({ _id: { $in: questionIds } });
-        // Map for quick lookup
-        const questionMap = {};
-        questions.forEach(q => { questionMap[q._id.toString()] = q; });
-        // Prepare result
-        const results = req.body.answers.map(ans => {
-            const q = questionMap[ans.questionId];
-            let isCorrect = false;
-            let similarityPercentage = 0;
-
-            // Ensure userAnswer is a string
-            let userAnswer = ans.userAnswer;
-            if (Array.isArray(userAnswer)) {
-                userAnswer = userAnswer.join(" ");
-            } else if (userAnswer !== null && typeof userAnswer !== 'string') {
-                userAnswer = String(userAnswer);
-            }
-
-            // Ensure correctAnswer is an array of strings
-            let correctAnswer = q ? q.answer : null;
-            if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-                correctAnswer = [correctAnswer];
-            }
-            if (
-                Array.isArray(correctAnswer) &&
-                correctAnswer.length === 1 &&
-                typeof correctAnswer[0] === "string" &&
-                correctAnswer[0].startsWith("[") &&
-                correctAnswer[0].endsWith("]")
-            ) {
-                try {
-                    const parsed = JSON.parse(correctAnswer[0]);
-                    if (Array.isArray(parsed)) {
-                        correctAnswer = parsed;
-                    }
-                } catch (e) {
-                    // leave as is
-                }
-            }
-
-            if (q) {
-                const similarity = stringSimilarity.compareTwoStrings(
-                    userAnswer.trim().toLowerCase(),
-                    String(correctAnswer[0]).trim().toLowerCase()
-                );
-                similarityPercentage = Math.round(similarity * 100);
-                isCorrect = similarityPercentage >= 60; // Set a threshold for correctness
-            }
-            return {
-                questionId: ans.questionId,
-                userAnswer,
-                correctAnswer,
-                isCorrect,
-                similarityPercentage
-            };
-        });
-        return sendSuccessResponse(res, "Bulk answers checked", results);
-    } catch (error) {
-        return ThrowError(res, 500, error.message);
-    }
-};
-
+// section wise all correct answer
 export const getWritingSectionCorrectAnswers = async (req, res) => {
     try {
         const { writingSectionId } = req.params;
+
         if (!mongoose.Types.ObjectId.isValid(writingSectionId)) {
             return sendBadRequestResponse(res, "Invalid writingSectionId");
         }
+
         const questions = await WritingQuestion.find({ writingSectionId });
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No questions found for this section");
         }
 
-        // Prepare numbered answers with normalized correctAnswer
         const answers = questions.map((q, idx) => {
-            let correctAnswer = q.answer;
-            if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-                correctAnswer = [correctAnswer];
-            }
+            // Normalize correctAnswer
+            let correctAnswer = Array.isArray(q.answer) ? q.answer : [q.answer];
+
             if (
-                Array.isArray(correctAnswer) &&
-                correctAnswer.length === 1 &&
                 typeof correctAnswer[0] === "string" &&
                 correctAnswer[0].startsWith("[") &&
                 correctAnswer[0].endsWith("]")
             ) {
                 try {
                     const parsed = JSON.parse(correctAnswer[0]);
-                    if (Array.isArray(parsed)) {
-                        correctAnswer = parsed;
-                    }
+                    if (Array.isArray(parsed)) correctAnswer = parsed;
                 } catch (e) {
-                    // leave as is
+                    // leave original
                 }
             }
+
             return {
                 number: idx + 1,
+                questionId: q._id,
                 correctAnswer
             };
         });

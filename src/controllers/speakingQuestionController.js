@@ -7,6 +7,11 @@ import fs from "fs";
 import path from "path";
 import stringSimilarity from "string-similarity";
 import speech from '@google-cloud/speech';
+// import whisperNode from 'whisper-node';
+// const { Whisper } = whisperNode;
+
+
+const speechClient = new speech.SpeechClient();
 
 // Admin: Add a SpeakingQuestion
 export const addSpeakingQuestion = async (req, res) => {
@@ -118,121 +123,10 @@ export const deleteSpeakingQuestion = async (req, res) => {
     }
 };
 
-// Bulk answer check (user submits multiple answers)
-// export const checkWritingBulkUserAnswers = async (req, res) => {
-//     try {
-//         if (!req.body || !Array.isArray(req.body.answers)) {
-//             return sendBadRequestResponse(res, "Answers array is required!");
-//         }
-//         // Collect all questionIds
-//         const questionIds = req.body.answers.map(ans => ans.questionId);
-//         // Fetch all questions in one go
-//         const questions = await SpeakingQuestion.find({ _id: { $in: questionIds } });
-//         // Map for quick lookup
-//         const questionMap = {};
-//         questions.forEach(q => { questionMap[q._id.toString()] = q; });
-//         // Prepare result
-//         const results = req.body.answers.map(ans => {
-//             const q = questionMap[ans.questionId];
-//             let isCorrect = false;
-
-//             // Ensure userAnswer is a string
-//             let userAnswer = ans.userAnswer;
-//             if (Array.isArray(userAnswer)) {
-//                 userAnswer = userAnswer.join(" ");
-//             } else if (userAnswer !== null && typeof userAnswer !== 'string') {
-//                 userAnswer = String(userAnswer);
-//             }
-
-//             // Ensure correctAnswer is an array of strings
-//             let correctAnswer = q ? q.answer : null;
-//             if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-//                 correctAnswer = [correctAnswer];
-//             }
-//             if (
-//                 Array.isArray(correctAnswer) &&
-//                 correctAnswer.length === 1 &&
-//                 typeof correctAnswer[0] === "string" &&
-//                 correctAnswer[0].startsWith("[") &&
-//                 correctAnswer[0].endsWith("]")
-//             ) {
-//                 try {
-//                     const parsed = JSON.parse(correctAnswer[0]);
-//                     if (Array.isArray(parsed)) {
-//                         correctAnswer = parsed;
-//                     }
-//                 } catch (e) {
-//                     // leave as is
-//                 }
-//             }
-
-//             if (q) {
-//                 isCorrect = correctAnswer.some(ansStr =>
-//                     userAnswer.trim().toLowerCase() === String(ansStr).trim().toLowerCase()
-//                 );
-//             }
-//             return {
-//                 questionId: ans.questionId,
-//                 userAnswer,
-//                 correctAnswer,
-//                 isCorrect
-//             }
-//         });
-//         return sendSuccessResponse(res, "Bulk answers checked", results);
-//     } catch (error) {
-//         return ThrowError(res, 500, error.message);
-//     }
-// };
-
-// export const getWritingSectionCorrectAnswers = async (req, res) => {
-//     try {
-//         const { speakingTopicId } = req.params;
-//         if (!mongoose.Types.ObjectId.isValid(speakingTopicId)) {
-//             return sendBadRequestResponse(res, "Invalid speakingTopicId");
-//         }
-//         const questions = await SpeakingQuestion.find({ speakingTopicId });
-//         if (!questions || questions.length === 0) {
-//             return sendBadRequestResponse(res, "No questions found for this section");
-//         }
-
-//         // Prepare numbered answers with normalized correctAnswer
-//         const answers = questions.map((q, idx) => {
-//             let correctAnswer = q.answer;
-//             if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-//                 correctAnswer = [correctAnswer];
-//             }
-//             if (
-//                 Array.isArray(correctAnswer) &&
-//                 correctAnswer.length === 1 &&
-//                 typeof correctAnswer[0] === "string" &&
-//                 correctAnswer[0].startsWith("[") &&
-//                 correctAnswer[0].endsWith("]")
-//             ) {
-//                 try {
-//                     const parsed = JSON.parse(correctAnswer[0]);
-//                     if (Array.isArray(parsed)) {
-//                         correctAnswer = parsed;
-//                     }
-//                 } catch (e) {
-//                     // leave as is
-//                 }
-//             }
-//             return {
-//                 number: idx + 1,
-//                 correctAnswer
-//             };
-//         });
-
-//         return sendSuccessResponse(res, "Section correct answers fetched successfully", answers);
-//     } catch (error) {
-//         return sendBadRequestResponse(res, error.message);
-//     }
-// };
-
-// User uploads speaking answer audio, gets similarity score
 export const uploadUserSpeakingAnswer = async (req, res) => {
     try {
         const { questionId, userId } = req.body;
+
         if (!questionId || !userId) {
             return sendBadRequestResponse(res, "questionId and userId are required!");
         }
@@ -240,10 +134,11 @@ export const uploadUserSpeakingAnswer = async (req, res) => {
             return sendBadRequestResponse(res, "Audio file is required!");
         }
 
-        // 1. Transcribe audio using OpenAI Whisper
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve('D:/IELTS/google-credentials.json');
-        const client = new speech.SpeechClient();
+        // Setup Google credentials path
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve('google-credentials.json');
 
+
+        // Read file
         const audioFilePath = req.file.path;
         const file = fs.readFileSync(audioFilePath);
         const audioBytes = file.toString('base64');
@@ -251,40 +146,86 @@ export const uploadUserSpeakingAnswer = async (req, res) => {
         const audio = {
             content: audioBytes,
         };
+
         const config = {
-            encoding: 'LINEAR16', // or 'MP3', 'FLAC', etc. depending on your file
-            sampleRateHertz: 16000, // adjust if needed
+            encoding: 'LINEAR16', // adjust based on file (or use 'MP3')
+            sampleRateHertz: 16000, // match your audio settings
             languageCode: 'en-US',
         };
+
         const request = {
-            audio: audio,
-            config: config,
+            audio,
+            config,
         };
 
-        const [response] = await client.recognize(request);
+        const [response] = await speechClient.recognize(request);
         const transcript = response.results
             .map(result => result.alternatives[0].transcript)
-            .join(' ');
+            .join(' ')
+            .trim();
 
-        // 2. Fetch the admin's answer for this question
+        if (!transcript) {
+            return sendBadRequestResponse(res, "Could not extract transcript from audio.");
+        }
+
+        // Get admin answer
         const question = await SpeakingQuestion.findById(questionId);
         if (!question) {
-            return sendBadRequestResponse(res, "Question not found!");
+            return sendBadRequestResponse(res, "Admin question not found!");
         }
+
         const adminAnswer = Array.isArray(question.answer) ? question.answer[0] : question.answer;
+        const similarityScore = Math.round(
+            stringSimilarity.compareTwoStrings(transcript.toLowerCase(), adminAnswer.toLowerCase()) * 100
+        );
 
-        // 3. Calculate similarity score
-        const similarityScore = Math.round(stringSimilarity.compareTwoStrings(
-            transcript.trim().toLowerCase(),
-            adminAnswer.trim().toLowerCase()
-        ) * 100);
-
-        return sendSuccessResponse(res, "Audio processed. Transcript and score generated.", {
+        return sendSuccessResponse(res, "Transcript generated and matched!", {
             transcript,
             similarityScore,
-            audioPath: req.file.path
+            audioPath: req.file.path,
         });
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
 };
+
+
+// export const transcribeUserAudio = async (req, res) => {
+//     try {
+//         const { questionId, userId } = req.body;
+
+//         if (!questionId || !userId) {
+//             return res.status(400).json({ msg: "questionId and userId are required", data: null });
+//         }
+
+//         if (!req.file) {
+//             return res.status(400).json({ msg: "Audio file is required", data: null });
+//         }
+
+//         // Path where audio is stored
+//         const audioFilePath = req.file.path;
+
+//         // Transcribe with Whisper
+//         const whisper = new Whisper();
+//         const result = await whisper.transcribe(audioFilePath);
+
+//         const transcript = result.text || '';
+
+//         // Optionally compare with admin answer if needed
+//         // const similarity = stringSimilarity.compareTwoStrings(transcript.toLowerCase(), adminAnswer.toLowerCase());
+
+//         return res.status(200).json({
+//             msg: "Audio successfully converted to text",
+//             data: {
+//                 transcript,
+//                 audioPath: audioFilePath
+//             }
+//         });
+//     } catch (error) {
+//         return res.status(500).json({
+//             msg: "Error converting audio to text",
+//             error: error.message,
+//             data: null
+//         });
+//     }
+// };

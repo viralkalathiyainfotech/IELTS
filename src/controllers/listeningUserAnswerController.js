@@ -3,6 +3,7 @@ import ListeningQuestion from "../models/listeningQuestionModel.js";
 import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
 import { ThrowError } from "../utils/ErrorUtils.js";
 import mongoose from "mongoose";
+import moment from "moment";
 
 // Submit answers for a listening section
 export const submitListeningSectionAnswers = async (req, res) => {
@@ -143,5 +144,57 @@ export const checkListeningUserAnswer = async (req, res) => {
         });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const getListeningTestResult = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { listeningSectionId } = req.params;
+
+        if (!listeningSectionId) {
+            return sendBadRequestResponse(res, "listeningSectionId is required");
+        }
+
+        // Total questions for this section
+        const totalQuestions = await ListeningQuestion.countDocuments({ listeningSectionId });
+
+        if (totalQuestions === 0) {
+            return sendBadRequestResponse(res, "No questions found for this listening section");
+        }
+
+        // User answers
+        const userAnswers = await ListeningUserAnswer.findOne({ userId, listeningSectionId });
+
+        let correctAnswers = 0;
+        let attempted = 0;
+        let testDate = null;
+
+        if (userAnswers && userAnswers.answers.length > 0) {
+            attempted = userAnswers.answers.length;
+            correctAnswers = userAnswers.answers.filter(ans => ans.isCorrect).length;
+
+            testDate = moment(userAnswers.createdAt).format("D, MMMM");
+        }
+
+        const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+
+        let status = "Poor";
+        if (percentage >= 80) status = "Excellent";
+        else if (percentage >= 60) status = "Good";
+        else if (percentage >= 40) status = "Average";
+
+        return sendSuccessResponse(res, "Test result fetched", {
+            listeningSectionId,
+            totalQuestions,
+            attempted,
+            correctAnswers,
+            percentage,
+            status,
+            testDate
+        });
+
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
     }
 };

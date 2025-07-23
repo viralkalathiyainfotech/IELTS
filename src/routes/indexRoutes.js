@@ -12,20 +12,20 @@ import { addReadingTest, deleteReadingTest, getAllReadingTest, getReadingTestByI
 import { addReadingSection, deleteReadingSection, getAllReadingSection, getReadingSectionById, getSectionsByReadingTest, updateReadingSection } from "../controllers/readingSectionController.js";
 import { addParagraph, deleteParagraph, getAllParagraphs, getParagraphById, getParagraphsBySection, updateParagraph } from "../controllers/paragraphController.js";
 import { addReadingQuestion, checkReadingBulkUserAnswers, deleteReadingQuestion, getAllReadingQuestions, getReadingQuestionById, getReadingSectionCorrectAnswers, updateReadingQuestion } from "../controllers/readingQuestionController.js";
-import { checkReadingUserAnswer, submitReadingSectionAnswers } from "../controllers/readingUserAnswerController.js";
+import { checkReadingUserAnswer, getReadingTestResult, submitReadingSectionAnswers } from "../controllers/readingUserAnswerController.js";
 import { addWritingTest, deleteWritingTest, getAllWritingTest, getWritingTestById, updateWritingTest } from "../controllers/writingTestController.js";
 import { addWritingSection, deleteWritingSection, getAllWritingSection, getWritingSectionById, updateWritingSection } from "../controllers/writingSectionController.js";
-import { addWritingQuestion, checkWritingBulkUserAnswers, deleteWritingQuestion, getAllWritingQuestions, getWritingQuestionById, updateWritingQuestion, getWritingSectionCorrectAnswers } from "../controllers/writingQuestionController.js";
-import { checkWritingUserAnswer, submitOrUpdateSingleWritingAnswer, submitWritingSectionAnswers } from "../controllers/writingUserAnswerController.js";
+import { addWritingQuestion, deleteWritingQuestion, getAllWritingQuestions, getWritingQuestionById, updateWritingQuestion, getWritingSectionCorrectAnswers } from "../controllers/writingQuestionController.js";
+import { checkAndSubmitWritingAnswers, getWritingTestResult } from "../controllers/writingUserAnswerController.js";
 import { addListeningTest, deleteListeningTest, getAllListeningTest, getListeningTestById, updateListeningTest } from "../controllers/listeningTestController.js";
 import { addListeningSection, deleteListeningSection, getAllListeningSection, getListeningSectionById, getSectionsByListeningTest, updateListeningSection } from "../controllers/listeningSectionController.js";
 import { createListeningAudio, getAllListeningAudios, getListeningAudioById, updateListeningAudio, deleteListeningAudio, getAudioBySection } from '../controllers/listeningAudioController.js';
 import { addListeningQuestion, checkListeningBulkUserAnswers, deleteListeningQuestion, getAllListeningQuestions, getListeningQuestionById, getListeningSectionCorrectAnswers, updateListeningQuestion } from "../controllers/listeningQuestionController.js";
-import { checkListeningUserAnswer, submitListeningSectionAnswers } from "../controllers/listeningUserAnswerController.js";
+import { checkListeningUserAnswer, getListeningTestResult, submitListeningSectionAnswers } from "../controllers/listeningUserAnswerController.js";
 import { createSpekingTest, deleteSpeakingTest, getAllSpeakingTest, getSpeakingTestById, updateSpeakingTest } from "../controllers/speakingTestController.js";
 import { addSpeakingTopic, deleteSpeakingTopic, getAllSpeakingTopic, getSpeakingTopicById, updateSpeakingTopic } from "../controllers/speakingTopicController.js";
 import { addSpeakingQuestion, deleteSpeakingQuestion, getAllSpeakingQuestions, getSpeakingQuestionById, updateSpeakingQuestion, uploadUserSpeakingAnswer } from "../controllers/speakingQuestionController.js";
-import { submitSpeakingSectionAnswers } from "../controllers/speakingUserAnswerController.js";
+import { checkAndSubmitSpeakingAnswer } from "../controllers/speakingUserAnswerController.js";
 
 
 const indexRoutes = express.Router()
@@ -119,6 +119,7 @@ indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, 
 //userAnswer Routes
 indexRoutes.post("/submitReadingSectionAnswers", UserAuth, isUser, submitReadingSectionAnswers)
 indexRoutes.post("/checkReadingUserAnswer", UserAuth, checkReadingUserAnswer)
+indexRoutes.get("/getReadingTestResult/:readingSectionId", UserAuth, getReadingTestResult)
 
 
 ///////////////////////////////////////////////////// WritingTest /////////////////////////////////////////////////////////
@@ -144,16 +145,12 @@ indexRoutes.get("/getAllWritingQuestions", UserAuth, getAllWritingQuestions)
 indexRoutes.get("/getWritingQuestionById/:id", UserAuth, getWritingQuestionById)
 indexRoutes.put("/updateWritingQuestion/:id", UserAuth, isAdmin, upload.single("writing_question_image"), convertJfifToJpeg, updateWritingQuestion)
 indexRoutes.delete("/deleteWritingQuestion/:id", UserAuth, isAdmin, deleteWritingQuestion)
-indexRoutes.post("/checkWritingBulkUserAnswers", UserAuth, isUser, checkWritingBulkUserAnswers)
 indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, getWritingSectionCorrectAnswers)
 
 
 //writingUserAnswer Routes
-indexRoutes.post("/submitWritingSectionAnswers", UserAuth, isUser, submitWritingSectionAnswers)
-indexRoutes.post("/checkWritingUserAnswer", UserAuth, checkWritingUserAnswer)
-indexRoutes.post("/submitOrUpdateSingleWritingAnswer", UserAuth, submitOrUpdateSingleWritingAnswer)
-
-
+indexRoutes.post("/checkAndSubmitWritingAnswers", UserAuth, isUser, checkAndSubmitWritingAnswers)
+indexRoutes.get("/getWritingTestResult/:writingSectionId", UserAuth, getWritingTestResult)
 
 
 ///////////////////////////////////////////////////// ListeningTest /////////////////////////////////////////////////////////
@@ -194,6 +191,7 @@ indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAu
 //writingUserAnswer Routes
 indexRoutes.post("/submitListeningSectionAnswers", UserAuth, isUser, submitListeningSectionAnswers)
 indexRoutes.post("/checkListeningUserAnswer", UserAuth, checkListeningUserAnswer)
+indexRoutes.get("/getListeningTestResult/:listeningSectionId", UserAuth, getListeningTestResult)
 
 
 ///////////////////////////////////////////////////// SpeakingTest /////////////////////////////////////////////////////////
@@ -221,11 +219,12 @@ indexRoutes.put("/updateSpeakingQuestion/:id", UserAuth, isAdmin, updateSpeaking
 indexRoutes.delete("/deleteSpeakingQuestion/:id", UserAuth, isAdmin, deleteSpeakingQuestion)
 
 //SpeakingUserAnswer Routes
-indexRoutes.post("/submitSpeakingSectionAnswers", UserAuth, isUser, submitSpeakingSectionAnswers)
+indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser, speakingAudioUpload.single('speakingAudio'), checkAndSubmitSpeakingAnswer)
 
 
 // User uploads speaking answer audio
 indexRoutes.post("/uploadUserSpeakingAnswer", UserAuth, isUser, speakingAudioUpload.single('speakingAudio'), uploadUserSpeakingAnswer);
+// indexRoutes.post("/transcribeUserAudio", UserAuth, isUser, speakingAudioUpload.single('speakingAudio'), transcribeUserAudio);
 
 
 export default indexRoutes  
