@@ -109,40 +109,6 @@ export const deleteReadingQuestion = async (req, res) => {
     }
 };
 
-// Bulk answer check (user submits multiple answers)
-export const checkReadingBulkUserAnswers = async (req, res) => {
-    try {
-        const { answers } = req.body;
-        if (!Array.isArray(answers) || answers.length === 0) {
-            return sendBadRequestResponse(res, "Answers array is required!");
-        }
-        // Collect all questionIds
-        const questionIds = answers.map(ans => ans.questionId);
-        // Fetch all questions in one go
-        const questions = await ReadingQuestion.find({ _id: { $in: questionIds } });
-        // Map for quick lookup
-        const questionMap = {};
-        questions.forEach(q => { questionMap[q._id.toString()] = q; });
-        // Prepare result
-        const results = answers.map(ans => {
-            const q = questionMap[ans.questionId];
-            let isCorrect = false;
-            if (q) {
-                isCorrect = (String(ans.userAnswer).trim().toLowerCase() === String(q.answer).trim().toLowerCase());
-            }
-            return {
-                questionId: ans.questionId,
-                userAnswer: ans.userAnswer,
-                correctAnswer: q ? q.answer : null,
-                isCorrect
-            };
-        });
-        return sendSuccessResponse(res, "Bulk answers checked", results);
-    } catch (error) {
-        return ThrowError(res, 500, error.message);
-    }
-};
-
 export const getReadingSectionCorrectAnswers = async (req, res) => {
     try {
         const { readingSectionId } = req.params;

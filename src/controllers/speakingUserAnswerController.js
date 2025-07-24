@@ -1,31 +1,82 @@
-import mongoose from "mongoose";
-import SpeakingUserAnswer from "../models/speakingUserAnswerModel.js";
-import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
-import { ThrowError } from "../utils/ErrorUtils.js";
-import path from "path";
-import fs from "fs"
+import fs from 'fs';
+import mongoose from 'mongoose';
+import stringSimilarity from 'string-similarity';
+import SpeakingQuestion from '../models/speakingQuestionModel.js';
+import SpeakingUserAnswer from '../models/speakingUserAnswerModel.js';
+import { sendBadRequestResponse, sendSuccessResponse } from '../utils/ResponseUtils.js';
+import { ThrowError } from '../utils/ErrorUtils.js';
+
+import speech from '@google-cloud/speech';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const client = new speech.SpeechClient({
+    keyFilename: path.join(__dirname, '../config/google-credentials.json') // adjust path if needed
+});
+
+
+process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve("D:/IELTS/google-credentials.json");
 
 export const checkAndSubmitSpeakingAnswer = async (req, res) => {
     try {
-        const { questionId, userId, speakingTopicId } = req.body;
+        const { questionId, speakingTopicId } = req.body;
+        const userId = req.user?._id; // ✅ Get userId from logged-in user
 
-        if (!questionId || !userId || !speakingTopicId) {
-            return sendBadRequestResponse(res, "questionId, userId, and speakingTopicId are required!");
+        if (!questionId || !speakingTopicId || !userId) {
+            return sendBadRequestResponse(res, "questionId, speakingTopicId are required!");
         }
 
-        if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(questionId) || !mongoose.Types.ObjectId.isValid(speakingTopicId)) {
+        // 🔒 Validate IDs
+        if (
+            !mongoose.Types.ObjectId.isValid(userId) ||
+            !mongoose.Types.ObjectId.isValid(questionId) ||
+            !mongoose.Types.ObjectId.isValid(speakingTopicId)
+        ) {
             return sendBadRequestResponse(res, "Invalid IDs!");
         }
 
+        // 📁 Audio must be provided
         if (!req.file) {
             return sendBadRequestResponse(res, "Audio file is required!");
         }
 
-        // Initialize Google Speech Client
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve('D:/IELTS/google-credentials.json');
-        const client = new SpeechClient();
+        const audioPath = req.file.path;
 
-        const file = fs.readFileSync(req.file.path);
+        // 💾 First: Save empty answer with audioPath
+        let userAnswerDoc = await SpeakingUserAnswer.findOne({ userId, speakingTopicId });
+        if (!userAnswerDoc) {
+            userAnswerDoc = new SpeakingUserAnswer({
+                userId,
+                speakingTopicId,
+                answers: []
+            });
+        }
+
+        const basicAnswerObj = {
+            questionId,
+            audioPath,
+            transcript: '',
+            correctAnswer: '',
+            similarityPercentage: 0,
+            isCorrect: false
+        };
+
+        const existingIndex = userAnswerDoc.answers.findIndex(
+            ans => ans.questionId.toString() === questionId
+        );
+
+        if (existingIndex !== -1) {
+            userAnswerDoc.answers[existingIndex] = basicAnswerObj;
+        } else {
+            userAnswerDoc.answers.push(basicAnswerObj);
+        }
+
+        await userAnswerDoc.save();
+
+        const file = fs.readFileSync(audioPath);
         const audioBytes = file.toString('base64');
 
         const audio = { content: audioBytes };
@@ -43,6 +94,7 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
             return sendBadRequestResponse(res, "Could not transcribe audio properly.");
         }
 
+        // 🧠 Step 3: Compare with correct answer
         const question = await SpeakingQuestion.findById(questionId);
         if (!question) {
             return sendBadRequestResponse(res, "Question not found!");
@@ -58,7 +110,7 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
                 const parsed = JSON.parse(correctAnswer);
                 if (Array.isArray(parsed)) correctAnswer = parsed[0];
             } catch (e) {
-                // continue with original
+                // continue with original string
             }
         }
 
@@ -69,41 +121,28 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
         const similarityPercentage = Math.round(similarity * 100);
         const isCorrect = similarity >= 0.7;
 
-        // Save to SpeakingUserAnswer
-        let userSectionAnswer = await SpeakingUserAnswer.findOne({ userId, speakingTopicId });
-        if (!userSectionAnswer) {
-            userSectionAnswer = new SpeakingUserAnswer({
-                userId,
-                speakingTopicId,
-                answers: [],
-            });
-        }
-
-        const answerObj = {
+        // ✍️ Step 4: Update full result
+        const updatedAnswerObj = {
             questionId,
             transcript,
             correctAnswer,
             similarityPercentage,
             isCorrect,
-            audioPath: req.file.path,
+            audioPath
         };
 
-        const existingIndex = userSectionAnswer.answers.findIndex(
-            a => a.questionId.toString() === questionId
-        );
-
         if (existingIndex !== -1) {
-            userSectionAnswer.answers[existingIndex] = answerObj;
+            userAnswerDoc.answers[existingIndex] = updatedAnswerObj;
         } else {
-            userSectionAnswer.answers.push(answerObj);
+            userAnswerDoc.answers.push(updatedAnswerObj);
         }
 
-        await userSectionAnswer.save();
+        await userAnswerDoc.save();
 
-        return sendSuccessResponse(res, "Answer submitted and evaluated", {
+        return sendSuccessResponse(res, "Answer audio saved and evaluated successfully", {
             userId,
             speakingTopicId,
-            answer: answerObj,
+            answer: updatedAnswerObj
         });
 
     } catch (error) {

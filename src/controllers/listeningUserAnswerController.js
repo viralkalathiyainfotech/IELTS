@@ -1,47 +1,52 @@
-import ListeningUserAnswer from "../models/listeningUserAnswerModel.js";
-import ListeningQuestion from "../models/listeningQuestionModel.js";
-import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
-import { ThrowError } from "../utils/ErrorUtils.js";
 import mongoose from "mongoose";
 import moment from "moment";
+import ListeningUserAnswer from "../models/listeningUserAnswerModel.js";
+import ListeningQuestion from "../models/listeningQuestionModel.js";
+import ListeningSection from "../models/listeningSectionModel.js";
+import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
+import { ThrowError } from "../utils/ErrorUtils.js";
 
-// Submit answers for a listening section
-export const submitListeningSectionAnswers = async (req, res) => {
+
+export const checkAndSubmitListeningAnswers = async (req, res) => {
     try {
-        const { userId, listeningSectionId, answers } = req.body;
-        if (!userId || !listeningSectionId || !Array.isArray(answers) || answers.length === 0) {
-            return sendBadRequestResponse(res, "userId, listeningSectionId, and answers are required!");
-        }
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return sendBadRequestResponse(res, "Invalid userId");
-        }
-        if (!mongoose.Types.ObjectId.isValid(listeningSectionId)) {
-            return sendBadRequestResponse(res, "Invalid listeningSectionId");
-        }
-        // Fetch all questions
-        const questionIds = answers.map(ans => ans.questionId);
-        const questions = await ListeningQuestion.find({ _id: { $in: questionIds } });
-        const questionMap = {};
-        questions.forEach(q => { questionMap[q._id.toString()] = q; });
+        const { userId, listeningSectionId, questionId, userAnswer, answers } = req.body;
 
-        // Prepare answers with correctness
-        const checkedAnswers = answers.map(ans => {
-            const q = questionMap[ans.questionId];
-            let isCorrect = false;
+        // ✅ Validate IDs
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return sendBadRequestResponse(res, "Valid userId is required");
+        }
+        if (!listeningSectionId || !mongoose.Types.ObjectId.isValid(listeningSectionId)) {
+            return sendBadRequestResponse(res, "Valid listeningSectionId is required");
+        }
 
-            // Ensure userAnswer is a string
-            let userAnswer = ans.userAnswer;
-            if (Array.isArray(userAnswer)) {
-                userAnswer = userAnswer.join(" "); // or userAnswer[0] if you want only the first answer
-            } else if (userAnswer !== null && typeof userAnswer !== 'string') {
-                userAnswer = String(userAnswer);
+        const listeningSection = await ListeningSection.findById(listeningSectionId);
+        if (!listeningSection) {
+            return sendBadRequestResponse(res, "Listening Section not found!");
+        }
+
+        // 🔁 Helper: check and prepare one answer
+        const processAnswer = async (questionId, userAnswer) => {
+            if (!mongoose.Types.ObjectId.isValid(questionId)) {
+                throw new Error("Invalid questionId");
             }
 
-            // Ensure correctAnswer is an array of strings
-            let correctAnswer = q ? q.answer : null;
+            const question = await ListeningQuestion.findById(questionId);
+            if (!question) {
+                throw new Error("Question not found");
+            }
+
+            // Normalize userAnswer
+            let userAns = userAnswer;
+            if (Array.isArray(userAns)) userAns = userAns.join(" ");
+            else if (userAns !== null && typeof userAns !== 'string') userAns = String(userAns);
+            userAns = userAns.trim().toLowerCase();
+
+            // Normalize correctAnswer(s)
+            let correctAnswer = question.answer;
             if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
                 correctAnswer = [correctAnswer];
             }
+
             if (
                 Array.isArray(correctAnswer) &&
                 correctAnswer.length === 1 &&
@@ -55,95 +60,78 @@ export const submitListeningSectionAnswers = async (req, res) => {
                         correctAnswer = parsed;
                     }
                 } catch (e) {
-                    // leave as is
+                    // continue with raw string
                 }
             }
 
-            if (q) {
-                // Compare with the first correct answer, or join all for comparison
-                isCorrect = correctAnswer.some(ansStr =>
-                    userAnswer.trim().toLowerCase() === String(ansStr).trim().toLowerCase()
-                );
-            }
+            const isCorrect = correctAnswer.some(ansStr =>
+                userAns === String(ansStr).trim().toLowerCase()
+            );
 
             return {
-                questionId: ans.questionId,
-                userAnswer,
-                isCorrect,
-                correctAnswer
+                questionId,
+                userAnswer: userAns,
+                correctAnswer,
+                isCorrect
             };
-        });
+        };
 
-        // Save or update user answers for this section
-        const userSectionAnswer = await ListeningUserAnswer.findOneAndUpdate(
-            { userId, listeningSectionId },
-            { userId, listeningSectionId, answers: checkedAnswers },
-            { upsert: true, new: true }
-        );
-
-        return sendSuccessResponse(res, "Section answers submitted and checked!", userSectionAnswer);
-    } catch (error) {
-        return ThrowError(res, 500, error.message);
-    }
-};
-
-// Check a single listening answer
-export const checkListeningUserAnswer = async (req, res) => {
-    try {
-        const { questionId, userAnswer } = req.body;
-        if (!questionId || userAnswer === undefined) {
-            return res.status(400).json({ success: false, message: "questionId and userAnswer are required!" });
+        // 🔄 Find or create user answer doc
+        let userSectionAnswer = await ListeningUserAnswer.findOne({ userId, listeningSectionId });
+        if (!userSectionAnswer) {
+            userSectionAnswer = new ListeningUserAnswer({
+                userId,
+                listeningSectionId,
+                answers: []
+            });
         }
 
-        const question = await ListeningQuestion.findById(questionId);
-        if (!question) {
-            return res.status(404).json({ success: false, message: "Question not found" });
-        }
+        const finalAnswers = [];
 
-        // Ensure userAnswer is a string
-        let userAns = userAnswer;
-        if (Array.isArray(userAns)) {
-            userAns = userAns.join(" ");
-        } else if (userAns !== null && typeof userAns !== 'string') {
-            userAns = String(userAns);
-        }
-
-        // Ensure correctAnswer is an array of strings
-        let correctAnswer = question.answer;
-        if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-            correctAnswer = [correctAnswer];
-        }
-        if (
-            Array.isArray(correctAnswer) &&
-            correctAnswer.length === 1 &&
-            typeof correctAnswer[0] === "string" &&
-            correctAnswer[0].startsWith("[") &&
-            correctAnswer[0].endsWith("]")
-        ) {
-            try {
-                const parsed = JSON.parse(correctAnswer[0]);
-                if (Array.isArray(parsed)) {
-                    correctAnswer = parsed;
+        // 🔹 CASE 1: Multiple answers (full section)
+        if (Array.isArray(answers) && answers.length > 0) {
+            for (const ans of answers) {
+                if (!ans.questionId || ans.userAnswer === undefined) {
+                    return sendBadRequestResponse(res, "Each answer must have questionId and userAnswer!");
                 }
-            } catch (e) {
-                // leave as is
+
+                const answerObj = await processAnswer(ans.questionId, ans.userAnswer);
+                const idx = userSectionAnswer.answers.findIndex(
+                    a => a.questionId.toString() === ans.questionId
+                );
+
+                if (idx !== -1) userSectionAnswer.answers[idx] = answerObj;
+                else userSectionAnswer.answers.push(answerObj);
+
+                finalAnswers.push(answerObj);
             }
         }
 
-        // Match logic
-        const isCorrect = correctAnswer.some(ansStr =>
-            userAns.trim().toLowerCase() === String(ansStr).trim().toLowerCase()
-        );
+        // 🔹 CASE 2: Single answer
+        else if (questionId && userAnswer !== undefined) {
+            const answerObj = await processAnswer(questionId, userAnswer);
+            const idx = userSectionAnswer.answers.findIndex(
+                a => a.questionId.toString() === questionId
+            );
 
-        return res.json({
-            success: true,
-            questionId,
-            userAnswer: userAns,
-            correctAnswer,
-            isCorrect
+            if (idx !== -1) userSectionAnswer.answers[idx] = answerObj;
+            else userSectionAnswer.answers.push(answerObj);
+
+            finalAnswers.push(answerObj);
+        } else {
+            return sendBadRequestResponse(res, "Provide either (questionId & userAnswer) or answers array!");
+        }
+
+        await userSectionAnswer.save();
+
+        return sendSuccessResponse(res, "Answer(s) submitted and checked!", {
+            userId,
+            listeningSectionId,
+            answers: finalAnswers
         });
+
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        return ThrowError(res, 500, error.message);
     }
 };
 

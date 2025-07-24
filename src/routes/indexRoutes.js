@@ -11,8 +11,8 @@ import { addTestDetails, deleteTestDetails, getAllTestDetails, getTestDetailsByI
 import { addReadingTest, deleteReadingTest, getAllReadingTest, getReadingTestById, updateReadingTest } from "../controllers/readingTestController.js";
 import { addReadingSection, deleteReadingSection, getAllReadingSection, getReadingSectionById, getSectionsByReadingTest, updateReadingSection } from "../controllers/readingSectionController.js";
 import { addParagraph, deleteParagraph, getAllParagraphs, getParagraphById, getParagraphsBySection, updateParagraph } from "../controllers/paragraphController.js";
-import { addReadingQuestion, checkReadingBulkUserAnswers, deleteReadingQuestion, getAllReadingQuestions, getReadingQuestionById, getReadingSectionCorrectAnswers, updateReadingQuestion } from "../controllers/readingQuestionController.js";
-import { checkReadingUserAnswer, getReadingTestResult, submitReadingSectionAnswers } from "../controllers/readingUserAnswerController.js";
+import { addReadingQuestion, deleteReadingQuestion, getAllReadingQuestions, getReadingQuestionById, getReadingSectionCorrectAnswers, updateReadingQuestion } from "../controllers/readingQuestionController.js";
+import { checkAndSubmitReadingAnswers, getReadingTestResult } from "../controllers/readingUserAnswerController.js";
 import { addWritingTest, deleteWritingTest, getAllWritingTest, getWritingTestById, updateWritingTest } from "../controllers/writingTestController.js";
 import { addWritingSection, deleteWritingSection, getAllWritingSection, getWritingSectionById, updateWritingSection } from "../controllers/writingSectionController.js";
 import { addWritingQuestion, deleteWritingQuestion, getAllWritingQuestions, getWritingQuestionById, updateWritingQuestion, getWritingSectionCorrectAnswers } from "../controllers/writingQuestionController.js";
@@ -20,11 +20,11 @@ import { checkAndSubmitWritingAnswers, getWritingTestResult } from "../controlle
 import { addListeningTest, deleteListeningTest, getAllListeningTest, getListeningTestById, updateListeningTest } from "../controllers/listeningTestController.js";
 import { addListeningSection, deleteListeningSection, getAllListeningSection, getListeningSectionById, getSectionsByListeningTest, updateListeningSection } from "../controllers/listeningSectionController.js";
 import { createListeningAudio, getAllListeningAudios, getListeningAudioById, updateListeningAudio, deleteListeningAudio, getAudioBySection } from '../controllers/listeningAudioController.js';
-import { addListeningQuestion, checkListeningBulkUserAnswers, deleteListeningQuestion, getAllListeningQuestions, getListeningQuestionById, getListeningSectionCorrectAnswers, updateListeningQuestion } from "../controllers/listeningQuestionController.js";
-import { checkListeningUserAnswer, getListeningTestResult, submitListeningSectionAnswers } from "../controllers/listeningUserAnswerController.js";
+import { addListeningQuestion, deleteListeningQuestion, getAllListeningQuestions, getListeningQuestionById, getListeningSectionCorrectAnswers, updateListeningQuestion } from "../controllers/listeningQuestionController.js";
+import { checkAndSubmitListeningAnswers, getListeningTestResult } from "../controllers/listeningUserAnswerController.js";
 import { createSpekingTest, deleteSpeakingTest, getAllSpeakingTest, getSpeakingTestById, updateSpeakingTest } from "../controllers/speakingTestController.js";
 import { addSpeakingTopic, deleteSpeakingTopic, getAllSpeakingTopic, getSpeakingTopicById, updateSpeakingTopic } from "../controllers/speakingTopicController.js";
-import { addSpeakingQuestion, deleteSpeakingQuestion, getAllSpeakingQuestions, getSpeakingQuestionById, updateSpeakingQuestion, uploadUserSpeakingAnswer } from "../controllers/speakingQuestionController.js";
+import { addSpeakingQuestion, deleteSpeakingQuestion, getAllSpeakingQuestions, getSpeakingQuestionById, getSpeakingSectionCorrectAnswers, updateSpeakingQuestion, uploadUserSpeakingAnswer } from "../controllers/speakingQuestionController.js";
 import { checkAndSubmitSpeakingAnswer } from "../controllers/speakingUserAnswerController.js";
 
 
@@ -113,12 +113,10 @@ indexRoutes.get("/getAllQuestions", UserAuth, getAllReadingQuestions)
 indexRoutes.get("/getQuestionById/:id", UserAuth, getReadingQuestionById)
 indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateReadingQuestion)
 indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteReadingQuestion)
-indexRoutes.post("/checkReadingBulkUserAnswers", UserAuth, isUser, checkReadingBulkUserAnswers)
 indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, getReadingSectionCorrectAnswers)
 
 //userAnswer Routes
-indexRoutes.post("/submitReadingSectionAnswers", UserAuth, isUser, submitReadingSectionAnswers)
-indexRoutes.post("/checkReadingUserAnswer", UserAuth, checkReadingUserAnswer)
+indexRoutes.post("/checkAndSubmitReadingAnswers", UserAuth, isUser, checkAndSubmitReadingAnswers)
 indexRoutes.get("/getReadingTestResult/:readingSectionId", UserAuth, getReadingTestResult)
 
 
@@ -185,12 +183,10 @@ indexRoutes.get("/getAllListeningQuestions", UserAuth, getAllListeningQuestions)
 indexRoutes.get("/getListeningQuestionById/:id", UserAuth, getListeningQuestionById)
 indexRoutes.put("/updateListeningQuestion/:id", UserAuth, isAdmin, updateListeningQuestion)
 indexRoutes.delete("/deleteListeningQuestion/:id", UserAuth, isAdmin, deleteListeningQuestion)
-indexRoutes.post("/checkListeningBulkUserAnswers", UserAuth, isUser, checkListeningBulkUserAnswers)
 indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAuth, getListeningSectionCorrectAnswers)
 
 //writingUserAnswer Routes
-indexRoutes.post("/submitListeningSectionAnswers", UserAuth, isUser, submitListeningSectionAnswers)
-indexRoutes.post("/checkListeningUserAnswer", UserAuth, checkListeningUserAnswer)
+indexRoutes.post("/checkAndSubmitListeningAnswers", UserAuth, checkAndSubmitListeningAnswers)
 indexRoutes.get("/getListeningTestResult/:listeningSectionId", UserAuth, getListeningTestResult)
 
 
@@ -217,6 +213,7 @@ indexRoutes.get("/getAllSpeakingQuestions", UserAuth, getAllSpeakingQuestions)
 indexRoutes.get("/getSpeakingQuestionById/:id", UserAuth, getSpeakingQuestionById)
 indexRoutes.put("/updateSpeakingQuestion/:id", UserAuth, isAdmin, updateSpeakingQuestion)
 indexRoutes.delete("/deleteSpeakingQuestion/:id", UserAuth, isAdmin, deleteSpeakingQuestion)
+indexRoutes.get("/getSpeakingSectionCorrectAnswers/:speakingTopicId", UserAuth, getSpeakingSectionCorrectAnswers)
 
 //SpeakingUserAnswer Routes
 indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser, speakingAudioUpload.single('speakingAudio'), checkAndSubmitSpeakingAnswer)

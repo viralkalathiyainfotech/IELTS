@@ -14,9 +14,11 @@ const speakingUserAnswerSchema = new mongoose.Schema({
     answers: [
         {
             questionId: { type: mongoose.Schema.Types.ObjectId, ref: "SpeakingQuestion", required: true },
-            audioPath: { type: String, required: true },
-            transcript: { type: String, required: true },
-            similarityScore: { type: Number, required: true }
+            transcript: { type: String, required: false },
+            correctAnswer: { type: String },
+            similarityPercentage: { type: Number, required: false },
+            isCorrect: { type: Boolean, default: false },
+            audioPath: { type: String, required: true }
         }
     ]
 }, { timestamps: true });

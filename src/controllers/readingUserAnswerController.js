@@ -1,81 +1,111 @@
+import mongoose from "mongoose";
+import moment from "moment"
 import ReadingUserAnswer from "../models/readingUserAnswerModel.js";
 import Question from "../models/readingQuestionModel.js";
+import ReadingSection from "../models/readingSectionModel.js"
 import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
 import { ThrowError } from "../utils/ErrorUtils.js";
 import ReadingQuestion from "../models/readingQuestionModel.js";
-import moment from "moment"
 
 
-export const submitReadingSectionAnswers = async (req, res) => {
+export const checkAndSubmitReadingAnswers = async (req, res) => {
     try {
-        const { userId, readingSectionId, answers } = req.body;
-        if (!userId || !readingSectionId || !Array.isArray(answers) || answers.length === 0) {
-            return sendBadRequestResponse(res, "userId, readingSectionId, and answers are required!");
-        }
-        // Fetch all questions
-        const questionIds = answers.map(ans => ans.questionId);
-        const questions = await Question.find({ _id: { $in: questionIds } });
-        const questionMap = {};
-        questions.forEach(q => { questionMap[q._id.toString()] = q; });
+        const { userId, readingSectionId, questionId, userAnswer, answers } = req.body;
 
-        // Prepare answers with correctness
-        const checkedAnswers = answers.map(ans => {
-            const q = questionMap[ans.questionId];
-            let isCorrect = false;
-            if (q) {
-                isCorrect = (String(ans.userAnswer).trim().toLowerCase() === String(q.answer).trim().toLowerCase());
+        // 🔒 Validate user and section
+        if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+            return sendBadRequestResponse(res, "Valid userId is required");
+        }
+        if (!readingSectionId || !mongoose.Types.ObjectId.isValid(readingSectionId)) {
+            return sendBadRequestResponse(res, "Valid readingSectionId is required");
+        }
+
+        const readingSection = await ReadingSection.findById(readingSectionId);
+        if (!readingSection) {
+            return sendBadRequestResponse(res, "Reading Section not found!");
+        }
+
+        // 🔁 Helper to check single answer
+        const processAnswer = async (questionId, userAnswer) => {
+            if (!mongoose.Types.ObjectId.isValid(questionId)) {
+                throw new Error("Invalid questionId");
             }
+
+            const question = await Question.findById(questionId);
+            if (!question) {
+                throw new Error("Question not found");
+            }
+
+            const correctAnswer = question.answer;
+            const isCorrect =
+                String(userAnswer).trim().toLowerCase() === String(correctAnswer).trim().toLowerCase();
+
             return {
-                questionId: ans.questionId,
-                userAnswer: ans.userAnswer,
+                questionId,
+                userAnswer,
+                correctAnswer,
                 isCorrect,
-                correctAnswer: q ? q.answer : null
             };
+        };
+
+        // 🔄 Find or create ReadingUserAnswer
+        let userSectionAnswer = await ReadingUserAnswer.findOne({ userId, readingSectionId });
+        if (!userSectionAnswer) {
+            userSectionAnswer = new ReadingUserAnswer({
+                userId,
+                readingSectionId,
+                answers: []
+            });
+        }
+
+        let finalAnswers = [];
+
+        // ✅ CASE 1: Full section submission
+        if (Array.isArray(answers) && answers.length > 0) {
+            for (const ans of answers) {
+                if (!ans.questionId || ans.userAnswer === undefined) {
+                    return sendBadRequestResponse(res, "Each answer must have questionId and userAnswer!");
+                }
+
+                const answerObj = await processAnswer(ans.questionId, ans.userAnswer);
+                const idx = userSectionAnswer.answers.findIndex(
+                    a => a.questionId.toString() === ans.questionId
+                );
+
+                if (idx !== -1) userSectionAnswer.answers[idx] = answerObj;
+                else userSectionAnswer.answers.push(answerObj);
+
+                finalAnswers.push(answerObj);
+            }
+        }
+
+        // ✅ CASE 2: Single question check/submit
+        else if (questionId && userAnswer !== undefined) {
+            const answerObj = await processAnswer(questionId, userAnswer);
+            const idx = userSectionAnswer.answers.findIndex(
+                a => a.questionId.toString() === questionId
+            );
+
+            if (idx !== -1) userSectionAnswer.answers[idx] = answerObj;
+            else userSectionAnswer.answers.push(answerObj);
+
+            finalAnswers.push(answerObj);
+        } else {
+            return sendBadRequestResponse(res, "Provide either (questionId & userAnswer) or answers array!");
+        }
+
+        await userSectionAnswer.save();
+
+        return sendSuccessResponse(res, "Answer(s) submitted and checked!", {
+            userId,
+            readingSectionId,
+            answers: finalAnswers
         });
 
-        // Save or update user answers for this section
-        const userSectionAnswer = await ReadingUserAnswer.findOneAndUpdate(
-            { userId, readingSectionId },
-            { userId, readingSectionId, answers: checkedAnswers },
-            { upsert: true, new: true }
-        );
-
-        return sendSuccessResponse(res, "Section answers submitted and checked!", userSectionAnswer);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
 };
-
-
-export const checkReadingUserAnswer = async (req, res) => {
-    try {
-        const { questionId, userAnswer } = req.body;
-        if (!questionId || userAnswer === undefined) {
-            return res.status(400).json({ success: false, message: "questionId and userAnswer are required!" });
-        }
-
-        const question = await Question.findById(questionId);
-        if (!question) {
-            return res.status(404).json({ success: false, message: "Question not found" });
-        }
-
-        // Match logic
-        const isCorrect = (
-            String(userAnswer).trim().toLowerCase() === String(question.answer).trim().toLowerCase()
-        );
-
-        return res.json({
-            success: true,
-            questionId,
-            userAnswer,
-            correctAnswer: question.answer,
-            isCorrect
-        });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
-    }
-};
-
 
 export const getReadingTestResult = async (req, res) => {
     try {

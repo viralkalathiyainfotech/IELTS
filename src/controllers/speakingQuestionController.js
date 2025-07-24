@@ -7,8 +7,6 @@ import fs from "fs";
 import path from "path";
 import stringSimilarity from "string-similarity";
 import speech from '@google-cloud/speech';
-// import whisperNode from 'whisper-node';
-// const { Whisper } = whisperNode;
 
 
 const speechClient = new speech.SpeechClient();
@@ -123,6 +121,50 @@ export const deleteSpeakingQuestion = async (req, res) => {
     }
 };
 
+// section wise all correct answer
+export const getSpeakingSectionCorrectAnswers = async (req, res) => {
+    try {
+        const { speakingTopicId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(speakingTopicId)) {
+            return sendBadRequestResponse(res, "Invalid speakingTopicId");
+        }
+
+        const questions = await SpeakingQuestion.find({ speakingTopicId });
+        if (!questions || questions.length === 0) {
+            return sendBadRequestResponse(res, "No questions found for this section");
+        }
+
+        const answers = questions.map((q, idx) => {
+            // Normalize correctAnswer
+            let correctAnswer = Array.isArray(q.answer) ? q.answer : [q.answer];
+
+            if (
+                typeof correctAnswer[0] === "string" &&
+                correctAnswer[0].startsWith("[") &&
+                correctAnswer[0].endsWith("]")
+            ) {
+                try {
+                    const parsed = JSON.parse(correctAnswer[0]);
+                    if (Array.isArray(parsed)) correctAnswer = parsed;
+                } catch (e) {
+                    // leave original
+                }
+            }
+
+            return {
+                number: idx + 1,
+                questionId: q._id,
+                correctAnswer
+            };
+        });
+
+        return sendSuccessResponse(res, "Section correct answers fetched successfully", answers);
+    } catch (error) {
+        return sendBadRequestResponse(res, error.message);
+    }
+};
+
 export const uploadUserSpeakingAnswer = async (req, res) => {
     try {
         const { questionId, userId } = req.body;
@@ -188,44 +230,3 @@ export const uploadUserSpeakingAnswer = async (req, res) => {
         return ThrowError(res, 500, error.message);
     }
 };
-
-
-// export const transcribeUserAudio = async (req, res) => {
-//     try {
-//         const { questionId, userId } = req.body;
-
-//         if (!questionId || !userId) {
-//             return res.status(400).json({ msg: "questionId and userId are required", data: null });
-//         }
-
-//         if (!req.file) {
-//             return res.status(400).json({ msg: "Audio file is required", data: null });
-//         }
-
-//         // Path where audio is stored
-//         const audioFilePath = req.file.path;
-
-//         // Transcribe with Whisper
-//         const whisper = new Whisper();
-//         const result = await whisper.transcribe(audioFilePath);
-
-//         const transcript = result.text || '';
-
-//         // Optionally compare with admin answer if needed
-//         // const similarity = stringSimilarity.compareTwoStrings(transcript.toLowerCase(), adminAnswer.toLowerCase());
-
-//         return res.status(200).json({
-//             msg: "Audio successfully converted to text",
-//             data: {
-//                 transcript,
-//                 audioPath: audioFilePath
-//             }
-//         });
-//     } catch (error) {
-//         return res.status(500).json({
-//             msg: "Error converting audio to text",
-//             error: error.message,
-//             data: null
-//         });
-//     }
-// };
