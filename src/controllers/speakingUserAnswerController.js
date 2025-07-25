@@ -212,7 +212,7 @@ export const getAllSpeakingTestResults = async (req, res) => {
                 return {
                     testNumber: `Practice Test-${userTestAttempts.length - index}`, // latest is highest number
                     speakingTopicId: test.speakingTopicId._id,
-                    testDate: moment(test.createdAt).format("D, MMMM"),
+                    testDate: moment(test.createdAt).format("D, MMMM , yy"),
                     percentage,
                     status
                 };
