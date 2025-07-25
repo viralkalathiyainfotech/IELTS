@@ -3,13 +3,6 @@ import SpeakingQuestion from "../models/speakingQuestionModel.js";
 import SpeakingTopic from "../models/speakingTopicModel.js";
 import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUtils.js";
 import { ThrowError } from "../utils/ErrorUtils.js";
-import fs from "fs";
-import path from "path";
-import stringSimilarity from "string-similarity";
-import speech from '@google-cloud/speech';
-
-
-const speechClient = new speech.SpeechClient();
 
 // Admin: Add a SpeakingQuestion
 export const addSpeakingQuestion = async (req, res) => {
@@ -165,68 +158,3 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
     }
 };
 
-export const uploadUserSpeakingAnswer = async (req, res) => {
-    try {
-        const { questionId, userId } = req.body;
-
-        if (!questionId || !userId) {
-            return sendBadRequestResponse(res, "questionId and userId are required!");
-        }
-        if (!req.file) {
-            return sendBadRequestResponse(res, "Audio file is required!");
-        }
-
-        // Setup Google credentials path
-        process.env.GOOGLE_APPLICATION_CREDENTIALS = path.resolve('google-credentials.json');
-
-
-        // Read file
-        const audioFilePath = req.file.path;
-        const file = fs.readFileSync(audioFilePath);
-        const audioBytes = file.toString('base64');
-
-        const audio = {
-            content: audioBytes,
-        };
-
-        const config = {
-            encoding: 'LINEAR16', // adjust based on file (or use 'MP3')
-            sampleRateHertz: 16000, // match your audio settings
-            languageCode: 'en-US',
-        };
-
-        const request = {
-            audio,
-            config,
-        };
-
-        const [response] = await speechClient.recognize(request);
-        const transcript = response.results
-            .map(result => result.alternatives[0].transcript)
-            .join(' ')
-            .trim();
-
-        if (!transcript) {
-            return sendBadRequestResponse(res, "Could not extract transcript from audio.");
-        }
-
-        // Get admin answer
-        const question = await SpeakingQuestion.findById(questionId);
-        if (!question) {
-            return sendBadRequestResponse(res, "Admin question not found!");
-        }
-
-        const adminAnswer = Array.isArray(question.answer) ? question.answer[0] : question.answer;
-        const similarityScore = Math.round(
-            stringSimilarity.compareTwoStrings(transcript.toLowerCase(), adminAnswer.toLowerCase()) * 100
-        );
-
-        return sendSuccessResponse(res, "Transcript generated and matched!", {
-            transcript,
-            similarityScore,
-            audioPath: req.file.path,
-        });
-    } catch (error) {
-        return ThrowError(res, 500, error.message);
-    }
-};

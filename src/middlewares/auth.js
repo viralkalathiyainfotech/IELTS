@@ -1,11 +1,7 @@
 import jwt from "jsonwebtoken";
 import registerModel from "../models/registerModel.js";
-import {
-    sendErrorResponse,
-    sendForbiddenResponse,
-    sendUnauthorizedResponse,
-    sendNotFoundResponse
-} from '../utils/ResponseUtils.js';
+import { sendErrorResponse, sendForbiddenResponse, sendUnauthorizedResponse, sendNotFoundResponse } from '../utils/ResponseUtils.js';
+import moment from "moment";
 
 export const UserAuth = async (req, res, next) => {
     try {
@@ -68,6 +64,32 @@ export const isUser = async (req, res, next) => {
         if (req.user.isAdmin) {
             return sendForbiddenResponse(res, "Access denied. Not a regular user.");
         }
+        next();
+    } catch (error) {
+        return sendErrorResponse(res, 500, error.message);
+    }
+};
+
+export const isPremiumUser = async (req, res, next) => {
+    try {
+        const user = req.user;
+
+        if (user?.isAdmin) {
+            return next();
+        }
+
+        if (!user || user.planStatus !== "Active") {
+            return sendForbiddenResponse(res, "Access denied. Premium subscription required.");
+        }
+
+        const now = moment();
+        const startDate = moment(user.startDate);
+        const endDate = moment(user.endDate);
+
+        if (!startDate.isValid() || !endDate.isValid() || now.isBefore(startDate) || now.isAfter(endDate)) {
+            return sendForbiddenResponse(res, "Your premium subscription has expired.");
+        }
+
         next();
     } catch (error) {
         return sendErrorResponse(res, 500, error.message);

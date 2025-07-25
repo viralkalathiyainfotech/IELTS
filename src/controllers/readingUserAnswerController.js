@@ -107,53 +107,43 @@ export const checkAndSubmitReadingAnswers = async (req, res) => {
     }
 };
 
-export const getReadingTestResult = async (req, res) => {
+export const getAllReadingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { readingSectionId } = req.params;
 
-        if (!readingSectionId) {
-            return sendBadRequestResponse(res, "readingSectionId is required");
+        const userTestAttempts = await ReadingUserAnswer.find({ userId })
+            .sort({ createdAt: -1 })
+            .populate('readingSectionId', 'title'); // assumes title field exists
+
+        if (!userTestAttempts || userTestAttempts.length === 0) {
+            return sendSuccessResponse(res, "No tests found", []);
         }
 
-        // Total questions for this section
-        const totalQuestions = await ReadingQuestion.countDocuments({ readingSectionId });
+        const results = await Promise.all(
+            userTestAttempts.map(async (test, index) => {
+                const totalQuestions = await ReadingQuestion.countDocuments({
+                    readingSectionId: test.readingSectionId._id
+                });
 
-        if (totalQuestions === 0) {
-            return sendBadRequestResponse(res, "No questions found for this reading section");
-        }
+                const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
+                const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
-        // User answers
-        const userAnswers = await ReadingUserAnswer.findOne({ userId, readingSectionId });
+                let status = "Poor";
+                if (percentage >= 80) status = "Excellent";
+                else if (percentage >= 60) status = "Good";
+                else if (percentage >= 40) status = "Average";
 
-        let correctAnswers = 0;
-        let attempted = 0;
-        let testDate = null;
+                return {
+                    testNumber: `Practice Test-${userTestAttempts.length - index}`, // latest is highest number
+                    readingSectionId: test.readingSectionId._id,
+                    testDate: moment(test.createdAt).format("D, MMMM"),
+                    percentage,
+                    status
+                };
+            })
+        );
 
-        if (userAnswers && userAnswers.answers.length > 0) {
-            attempted = userAnswers.answers.length;
-            correctAnswers = userAnswers.answers.filter(ans => ans.isCorrect).length;
-
-            testDate = moment(userAnswers.createdAt).format("D, MMMM");
-        }
-
-        const percentage = Math.round((correctAnswers / totalQuestions) * 100);
-
-        let status = "Poor";
-        if (percentage >= 80) status = "Excellent";
-        else if (percentage >= 60) status = "Good";
-        else if (percentage >= 40) status = "Average";
-
-        return sendSuccessResponse(res, "Test result fetched", {
-            readingSectionId,
-            totalQuestions,
-            attempted,
-            correctAnswers,
-            percentage,
-            status,
-            testDate
-        });
-
+        return sendSuccessResponse(res, "All Reading Test Results", results);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }

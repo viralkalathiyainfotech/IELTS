@@ -1,9 +1,14 @@
 import Register from "../models/registerModel.js";
 import { ThrowError } from "../utils/ErrorUtils.js"
 import bcrypt from "bcryptjs";
+import moment from "moment";
 import fs from 'fs';
 import path from "path";
 import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendForbiddenResponse, sendCreatedResponse, sendUnauthorizedResponse } from '../utils/ResponseUtils.js';
+import ReadingUserAnswer from "../models/readingUserAnswerModel.js"
+import ListeningUserAnswer from "../models/listeningUserAnswerModel.js"
+import WritingUserAnswer from "../models/writingUserAnswerModel.js"
+import SpeakingUserAnswer from "../models/speakingUserAnswerModel.js"
 
 // Create new register
 export const createRegister = async (req, res) => {
@@ -78,7 +83,7 @@ export const getRegisterById = async (req, res) => {
 export const updateProfileUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, date_of_birth, gender, email, phone, role  } = req.body;
+        const { firstName, lastName, date_of_birth, gender, email, phone, role } = req.body;
 
         if (!req.user || (!req.user.isAdmin && req.user._id.toString() !== id)) {
             return sendForbiddenResponse(res, "Access denied. You can only update your own profile.");
@@ -157,7 +162,7 @@ export const updateProfileUser = async (req, res) => {
 export const updateProfileAdmin = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, date_of_birth, gender, email, phone, role  } = req.body;
+        const { firstName, lastName, date_of_birth, gender, email, phone, role } = req.body;
 
         if (!req.user || (!req.user.isAdmin && req.user._id.toString() !== id)) {
             return sendForbiddenResponse(res, "Access denied. You can only update your own profile.");
@@ -283,6 +288,66 @@ export const getAllUsers = async (req, res) => {
 
     } catch (error) {
         return ThrowError(res, 500, error.message)
+    }
+};
+
+
+export const getAllUserTestResults = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const [writingTests, listeningTests, readingTests, speakingTests] = await Promise.all([
+            WritingUserAnswer.find({ userId }).populate("writingSectionId", "title createdAt"),
+            ListeningUserAnswer.find({ userId }).populate("listeningSectionId", "title createdAt"),
+            ReadingUserAnswer.find({ userId }).populate("readingSectionId", "title createdAt"),
+            SpeakingUserAnswer.find({ userId }).populate("speakingTopicId", "title createdAt"),
+        ]);
+
+        const allTests = [];
+
+        const processTests = (tests, moduleName, sectionKey) => {
+            tests.forEach(test => {
+                const totalQuestions = test.answers.length;
+                const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
+                const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+
+                let status = "Poor";
+                if (percentage >= 80) status = "Excellent";
+                else if (percentage >= 60) status = "Good";
+                else if (percentage >= 40) status = "Better";
+
+                const date = moment(test.createdAt);
+                const formattedDate = date.isSame(moment(), 'day')
+                    ? "Today"
+                    : date.isSame(moment().subtract(1, 'day'), 'day')
+                        ? "Yesterday"
+                        : date.format("D, MMMM");
+
+                allTests.push({
+                    module: moduleName,
+                    percentage,
+                    status,
+                    date: formattedDate
+                });
+            });
+        };
+
+        processTests(writingTests, "Writing", "writingSectionId");
+        processTests(listeningTests, "Listening", "listeningSectionId");
+        processTests(readingTests, "Reading", "readingSectionId");
+        processTests(speakingTests, "Speaking", "speakingTopicId");
+
+        // Group by date
+        const grouped = {};
+        allTests.forEach(test => {
+            if (!grouped[test.date]) grouped[test.date] = [];
+            grouped[test.date].push(test);
+        });
+
+        return sendSuccessResponse(res, "My Test Results", grouped);
+
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
     }
 };
 

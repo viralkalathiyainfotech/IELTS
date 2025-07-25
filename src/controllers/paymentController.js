@@ -1,7 +1,7 @@
 import Payment from '../models/paymentModel.js';
 import { ThrowError } from '../utils/ErrorUtils.js';
 import mongoose from 'mongoose';
-import { sendBadRequestResponse } from '../utils/ResponseUtils.js';
+import { sendBadRequestResponse, sendSuccessResponse } from '../utils/ResponseUtils.js';
 import premiumModel from '../models/premiumModel.js';
 import registerModel from '../models/registerModel.js';
 

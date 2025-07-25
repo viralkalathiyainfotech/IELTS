@@ -8,7 +8,7 @@ const listeningUserAnswerSchema = new mongoose.Schema({
     },
     listeningSectionId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "listeningSection",
+        ref: "ListeningSection",
         required: true
     },
     answers: [
