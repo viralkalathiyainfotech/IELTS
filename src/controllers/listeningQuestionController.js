@@ -69,6 +69,27 @@ export const getListeningQuestionById = async (req, res) => {
     }
 };
 
+// Get Listeningquestions by listeningSectionId
+export const getListeningQuestionBySection = async (req, res) => {
+    try {
+        const { listeningSectionId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(listeningSectionId)) {
+            return sendBadRequestResponse(res, "Invalid ListeningSection Id");
+        }
+
+        const question = await ListeningQuestion.find({ listeningSectionId });
+
+        if (!question || question.length === 0) {
+            return sendBadRequestResponse(res, "No question found for this Section!");
+        }
+
+        return sendSuccessResponse(res, "question fetched Successfully...", question);
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
+    }
+};
+
 // Update question
 export const updateListeningQuestion = async (req, res) => {
     try {
@@ -89,7 +110,7 @@ export const updateListeningQuestion = async (req, res) => {
         if (req.body.listeningSectionId && !mongoose.Types.ObjectId.isValid(req.body.listeningSectionId)) {
             return sendBadRequestResponse(res, "Invalid listeningSectionId Id");
         }
-        
+
         question = await ListeningQuestion.findByIdAndUpdate(id, { ...req.body }, { new: true });
         return sendSuccessResponse(res, "Question Updated Successfully...", question);
     } catch (error) {
