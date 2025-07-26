@@ -1,7 +1,6 @@
 /node_modules
 .env
 public/listeningAudio
-public/images
 public/userAudio
 google-credentials.json
 
