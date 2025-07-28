@@ -71,6 +71,27 @@ export const getSpeakingQuestionById = async (req, res) => {
     }
 };
 
+// Get Speakingquestion by speakingSectionId
+export const getSpeakingQuestionBySection = async (req, res) => {
+    try {
+        const { speakingTopicId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(speakingTopicId)) {
+            return sendBadRequestResponse(res, "Invalid SpeakingTopicId Id");
+        }
+
+        const question = await SpeakingQuestion.find({ speakingTopicId });
+
+        if (!question || question.length === 0) {
+            return sendBadRequestResponse(res, "No question found for this Section!");
+        }
+
+        return sendSuccessResponse(res, "question fetched Successfully...", question);
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
+    }
+};
+
 // Update question
 export const updateSpeakingQuestion = async (req, res) => {
     try {
