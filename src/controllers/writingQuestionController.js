@@ -5,7 +5,6 @@ import { sendBadRequestResponse, sendSuccessResponse } from "../utils/ResponseUt
 import { ThrowError } from "../utils/ErrorUtils.js";
 import fs from "fs";
 import path from "path";
-import stringSimilarity from "string-similarity";
 
 // Admin: Add a WritingQuestion
 export const addWritingQuestion = async (req, res) => {
@@ -86,6 +85,27 @@ export const getWritingQuestionById = async (req, res) => {
             return sendBadRequestResponse(res, "Question not found");
         }
         return sendSuccessResponse(res, "Question fetched Successfully...", question);
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
+    }
+};
+
+// Get Writingquestion by writingSectionId
+export const getWritingQuestionBySection = async (req, res) => {
+    try {
+        const { writingSectionId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(writingSectionId)) {
+            return sendBadRequestResponse(res, "Invalid WritingSection Id");
+        }
+
+        const question = await WritingQuestion.find({ writingSectionId });
+
+        if (!question || question.length === 0) {
+            return sendBadRequestResponse(res, "No question found for this Section!");
+        }
+
+        return sendSuccessResponse(res, "question fetched Successfully...", question);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }

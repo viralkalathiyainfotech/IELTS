@@ -45,7 +45,12 @@ export const createRegister = async (req, res) => {
             image: null
         });
 
-        return sendCreatedResponse(res, "Registration successful", newRegister);
+        const token = await newRegister.getJWT();
+        if (!token) {
+            return sendErrorResponse(res, 500, "Failed to generate token");
+        }
+
+        return sendCreatedResponse(res, "Registration successful", { newRegister, token: token });
     } catch (error) {
         return ThrowError(res, 500, error.message)
     }

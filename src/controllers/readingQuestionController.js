@@ -65,6 +65,27 @@ export const getReadingQuestionById = async (req, res) => {
     }
 };
 
+// Get Readingquestions by readingSectionId
+export const getReadingQuestionBySection = async (req, res) => {
+    try {
+        const { readingSectionId } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(readingSectionId)) {
+            return sendBadRequestResponse(res, "Invalid ReadingSection Id");
+        }
+
+        const question = await ReadingQuestion.find({ readingSectionId });
+
+        if (!question || question.length === 0) {
+            return sendBadRequestResponse(res, "No question found for this Section!");
+        }
+
+        return sendSuccessResponse(res, "question fetched Successfully...", question);
+    } catch (error) {
+        return ThrowError(res, 500, error.message);
+    }
+};
+
 // Update question
 export const updateReadingQuestion = async (req, res) => {
     try {
