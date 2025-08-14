@@ -75,10 +75,12 @@ indexRoutes.put("/updatePayment/:id", UserAuth, isUser, updatePayment)
 indexRoutes.delete("/deletePayment/:id", UserAuth, isUser, deletePayment)
 indexRoutes.get('/getMySubscription', UserAuth, isUser, getMySubscription);
 
+
+
 //testDetails Routes
 indexRoutes.post("/addTestDetails", UserAuth, isAdmin, addTestDetails)
-indexRoutes.get("/getAllTestDetails", UserAuth, isPremiumUser, getAllTestDetails)
-indexRoutes.get("/getTestDetailsById/:id", UserAuth, isPremiumUser, getTestDetailsById)
+indexRoutes.get("/getAllTestDetails", UserAuth, getAllTestDetails)
+indexRoutes.get("/getTestDetailsById/:id", UserAuth, getTestDetailsById)
 indexRoutes.put("/updateTestDetails/:id", UserAuth, isAdmin, updateTestDetails)
 indexRoutes.delete("/deleteTestDetails/:id", UserAuth, isAdmin, deleteTestDetails)
 
