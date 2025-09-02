@@ -198,6 +198,35 @@ export const changePassword = async (req, res) => {
     }
 };
 
+export const googleLogin = async (req, res) => {
+    try {
+        let { uid, firstName, lastName, email, image } = req.body;
+
+        let checkUser = await Register.findOne({ email });
+        if (!checkUser) {
+            checkUser = await Register.create({
+                uid,
+                firstName,
+                lastName,
+                email,
+                image,
+            });
+        }
+
+        // Generate JWT token
+        const token = await checkUser.getJWT();
+        if (!token) {
+            return sendErrorResponse(res, 500, "Failed to generate token");
+        }
+
+        return res.status(200).json({ status: 200, success: true, message: "User Login SuccessFully...", user: checkUser, token: token });
+
+    } catch (error) {
+        return sendErrorResponse(res, 500, error.message);
+    }
+};
+
+
 //logoutUser
 // export const logoutUser = async (req, res) => {
 //     try {

@@ -2,7 +2,7 @@ import express from "express";
 import { upload, convertJfifToJpeg, listeningAudioUpload, speakingAudioUpload } from "../middlewares/imageupload.js";
 import { isAdmin, isUser, UserAuth, isPremiumUser } from "../middlewares/auth.js";
 import { createRegister, getRegisterById, getAllUsers, updateProfileUser, updateProfileAdmin, getAllUserTestResults } from "../controllers/registerController.js";
-import { changePassword, forgotPassword, loginUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
+import { changePassword, forgotPassword, googleLogin, loginUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
 import { addAbout, deleteAbout, getAboutById, getAllAbout, updateAbout } from "../controllers/aboutController.js";
 import { addPrivacyPolicy, deletePrivacyPolicy, getAllPrivacyPolicy, getPrivacyPolicyById, updatePrivacyPolicy } from "../controllers/privacyPolicyController.js";
 import { createPremium, deletePremium, getAllPremium, getPremiumById, updatePremium } from "../controllers/premiumController.js";
@@ -40,6 +40,7 @@ indexRoutes.get("/getAllUserTestResults", UserAuth, getAllUserTestResults)
 
 //login Routes
 indexRoutes.post('/loginUser', loginUser);
+indexRoutes.post('/googleLogin', googleLogin);
 indexRoutes.post('/forgotPassword', forgotPassword);
 indexRoutes.post('/VerifyEmail', VerifyEmail);
 indexRoutes.post('/resetPassword', resetPassword);
