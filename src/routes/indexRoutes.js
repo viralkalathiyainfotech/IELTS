@@ -109,7 +109,7 @@ indexRoutes.get("/getAllParagraphs", UserAuth, getAllParagraphs)
 indexRoutes.get("/getParagraphById/:id", UserAuth, getParagraphById)
 indexRoutes.put("/updateParagraph/:id", UserAuth, isAdmin, updateParagraph)
 indexRoutes.delete("/deleteParagraph/:id", UserAuth, isAdmin, deleteParagraph)
-indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth, isAdmin, getParagraphsBySection)
+indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth,  getParagraphsBySection)
 
 //ReadingQuestion Routes
 indexRoutes.post("/addQuestion", UserAuth, isAdmin, addReadingQuestion)
