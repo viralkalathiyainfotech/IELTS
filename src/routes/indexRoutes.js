@@ -109,7 +109,7 @@ indexRoutes.get("/getAllParagraphs", UserAuth, getAllParagraphs)
 indexRoutes.get("/getParagraphById/:id", UserAuth, getParagraphById)
 indexRoutes.put("/updateParagraph/:id", UserAuth, isAdmin, updateParagraph)
 indexRoutes.delete("/deleteParagraph/:id", UserAuth, isAdmin, deleteParagraph)
-indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth,  getParagraphsBySection)
+indexRoutes.get("/getParagraphsBySection/:readingSectionId", UserAuth, getParagraphsBySection)
 
 //ReadingQuestion Routes
 indexRoutes.post("/addQuestion", UserAuth, isAdmin, addReadingQuestion)
@@ -118,7 +118,7 @@ indexRoutes.get("/getQuestionById/:id", UserAuth, getReadingQuestionById)
 indexRoutes.get("/getReadingQuestionBySection/:readingSectionId", UserAuth, getReadingQuestionBySection)
 indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateReadingQuestion)
 indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteReadingQuestion)
-indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, getReadingSectionCorrectAnswers)
+indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, isPremiumUser, getReadingSectionCorrectAnswers)
 
 //userAnswer Routes
 indexRoutes.post("/checkAndSubmitReadingAnswers", UserAuth, isUser, checkAndSubmitReadingAnswers)

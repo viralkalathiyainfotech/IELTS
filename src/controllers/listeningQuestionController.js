@@ -143,17 +143,26 @@ export const getListeningSectionCorrectAnswers = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(listeningSectionId)) {
             return sendBadRequestResponse(res, "Invalid listeningSectionId");
         }
+
         const questions = await ListeningQuestion.find({ listeningSectionId });
+
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No questions found for this section");
         }
 
-        // Prepare numbered answers with normalized correctAnswer
-        const answers = questions.map((q, idx) => {
+        // ✅ Sort by position
+        questions.sort((a, b) => a.position - b.position);
+
+        // ✅ Prepare answers with normalized format
+        const answers = questions.map((q) => {
             let correctAnswer = q.answer;
+
+            // Convert single values → array
             if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
                 correctAnswer = [correctAnswer];
             }
+
+            // If string looks like an array → parse
             if (
                 Array.isArray(correctAnswer) &&
                 correctAnswer.length === 1 &&
@@ -167,16 +176,21 @@ export const getListeningSectionCorrectAnswers = async (req, res) => {
                         correctAnswer = parsed;
                     }
                 } catch (e) {
-                    // leave as is
+                    // ignore parsing error
                 }
             }
+
             return {
-                number: idx + 1,
+                number: q.position,   // ✅ position based numbering
                 correctAnswer
             };
         });
 
-        return sendSuccessResponse(res, "Section correct answers fetched successfully", answers);
+        return sendSuccessResponse(
+            res,
+            "Section correct answers fetched successfully",
+            answers
+        );
     } catch (error) {
         return sendBadRequestResponse(res, error.message);
     }

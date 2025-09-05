@@ -149,8 +149,11 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
             return sendBadRequestResponse(res, "No questions found for this section");
         }
 
-        const answers = questions.map((q, idx) => {
-            // Normalize correctAnswer
+        // ✅ Sort by position for correct order
+        questions.sort((a, b) => a.position - b.position);
+
+        const answers = questions.map((q) => {
+            // ✅ Normalize correctAnswer
             let correctAnswer = Array.isArray(q.answer) ? q.answer : [q.answer];
 
             if (
@@ -167,13 +170,17 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
             }
 
             return {
-                number: idx + 1,
+                number: q.position,   // ✅ Use position instead of idx + 1
                 questionId: q._id,
                 correctAnswer
             };
         });
 
-        return sendSuccessResponse(res, "Section correct answers fetched successfully", answers);
+        return sendSuccessResponse(
+            res,
+            "Section correct answers fetched successfully",
+            answers
+        );
     } catch (error) {
         return sendBadRequestResponse(res, error.message);
     }

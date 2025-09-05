@@ -136,20 +136,27 @@ export const getReadingSectionCorrectAnswers = async (req, res) => {
         if (!mongoose.Types.ObjectId.isValid(readingSectionId)) {
             return sendBadRequestResponse(res, "Invalid readingSectionId");
         }
+
         const questions = await ReadingQuestion.find({ readingSectionId });
+
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No questions found for this section");
         }
-        // Sort by position or _id if you want order
-        // questions.sort((a, b) => a.position - b.position);
 
-        // Prepare numbered answers
-        const answers = questions.map((q, idx) => ({
-            number: idx + 1,
+        // ✅ Sort by position field
+        questions.sort((a, b) => a.position - b.position);
+
+        // ✅ Use position for numbering
+        const answers = questions.map((q) => ({
+            number: q.position,        // instead of idx + 1
             correctAnswer: q.answer
         }));
 
-        return sendSuccessResponse(res, "Section correct answers fetched successfully", answers);
+        return sendSuccessResponse(
+            res,
+            "Section correct answers fetched successfully",
+            answers
+        );
     } catch (error) {
         return sendBadRequestResponse(res, error.message);
     }
