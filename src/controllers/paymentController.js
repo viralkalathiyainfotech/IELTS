@@ -15,12 +15,10 @@ export const createPayment = async (req, res) => {
         const userId = req.user._id;
         const { transactionId, premiumPlan } = req.body;
 
-        // Basic validation for required fields
         if (!transactionId || !premiumPlan) {
             return sendBadRequestResponse(res, "Missing required fields: transactionId, premiumPlan");
         }
 
-        // Fetch the premium plan
         if (!mongoose.Types.ObjectId.isValid(premiumPlan)) {
             return sendBadRequestResponse(res, 'Invalid Premium Plan ID format.');
         }
@@ -34,40 +32,47 @@ export const createPayment = async (req, res) => {
             return ThrowError(res, 404, 'User not found.');
         }
 
-        // Check if user has an active subscription for any plan
+        // Prevent multiple active subscriptions
         if (user.planId && user.endDate && new Date() < new Date(user.endDate)) {
-            return sendBadRequestResponse(res, 'You already have an active subscription. You can purchase a new plan after your current plan expires.');
+            return sendBadRequestResponse(
+                res,
+                'You already have an active subscription. You can purchase a new plan after your current plan expires.'
+            );
         }
 
-        // Derive plan details
+        // Plan details
         const planName = plan.type;
         const price = plan.price;
-        const discount = 0; // or from coupon
+        const discount = 0;
         const total = price - discount;
 
-        // Removed: Billing address logic
+        // Calculate subscription dates
+        const startDate = new Date();
+        let endDate = new Date(startDate);
 
-        let endDate = new Date();
         switch (plan.duration) {
             case "15 days":
-                endDate.setDate(endDate.getDate() + 15);
+                endDate.setDate(startDate.getDate() + 15);
                 break;
             case "1 month":
-                endDate.setMonth(endDate.getMonth() + 1);
+                endDate.setMonth(startDate.getMonth() + 1);
                 break;
             case "6 month":
-                endDate.setMonth(endDate.getMonth() + 6);
+                endDate.setMonth(startDate.getMonth() + 6);
                 break;
             default:
                 return ThrowError(res, 400, 'Invalid premium plan duration.');
         }
 
+        // Update user subscription
         user.planId = premiumPlan;
+        user.startDate = startDate;   // 🟢 FIX
         user.endDate = endDate;
         user.isSubscribed = true;
         user.planStatus = "Active";
         await user.save();
 
+        // Save payment record
         const newPayment = new Payment({
             transactionId,
             planName,
@@ -80,7 +85,7 @@ export const createPayment = async (req, res) => {
 
         const savedPayment = await newPayment.save();
 
-        return sendSuccessResponse(res, "Payment created Successfully...", savedPayment)
+        return sendSuccessResponse(res, "Payment created Successfully...", savedPayment);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }

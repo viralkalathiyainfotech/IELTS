@@ -72,23 +72,39 @@ export const isUser = async (req, res, next) => {
 
 export const isPremiumUser = async (req, res, next) => {
     try {
-        const user = req.user;
+        // 🔑 Always fetch fresh user from DB
+        const user = await registerModel.findById(req.user._id);
 
-        if (user?.isAdmin) {
+        if (!user) {
+            return sendForbiddenResponse(res, "User not found.");
+        }
+
+        // Admin users bypass
+        if (user.isAdmin) {
             return next();
         }
 
-        if (!user || user.planStatus !== "Active") {
+        if (user.planStatus !== "Active" || !user.startDate || !user.endDate) {
             return sendForbiddenResponse(res, "Access denied. Premium subscription required.");
         }
 
-        const now = moment();
-        const startDate = moment(user.startDate);
-        const endDate = moment(user.endDate);
+        const now = new Date();
+        const start = new Date(user.startDate);
+        const end = new Date(user.endDate);
 
-        if (!startDate.isValid() || !endDate.isValid() || now.isBefore(startDate) || now.isAfter(endDate)) {
+        if (now < start || now > end) {
+            // Expire logic
+            user.startDate = null;
+            user.endDate = null;
+            user.isSubscribed = false;
+            user.planStatus = "Expired";
+            await user.save();
+
             return sendForbiddenResponse(res, "Your premium subscription has expired.");
         }
+
+        // ✅ Attach fresh user in request for next handlers
+        req.user = user;
 
         next();
     } catch (error) {
