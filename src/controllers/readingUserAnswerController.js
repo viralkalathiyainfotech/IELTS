@@ -111,10 +111,17 @@ export const getAllReadingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        // 🔍 Get all attempts
+        // 🔍 Get all attempts with nested populate
         const userTestAttempts = await ReadingUserAnswer.find({ userId })
             .sort({ createdAt: -1 })
-            .populate('readingSectionId', 'title');
+            .populate({
+                path: "readingSectionId",
+                select: "title readingTestId",
+                populate: {
+                    path: "readingTestId",
+                    select: "title total_question"
+                }
+            });
 
         if (!userTestAttempts || userTestAttempts.length === 0) {
             return sendSuccessResponse(res, "No tests found", []);
@@ -149,9 +156,9 @@ export const getAllReadingTestResults = async (req, res) => {
                     if (correct >= 19) return 5.5;
                     if (correct >= 15) return 5;
                     if (correct >= 12) return 4.5;
-                    if (correct >= 9)  return 4;
-                    if (correct >= 6)  return 3.5;
-                    if (correct >= 3)  return 3;
+                    if (correct >= 9) return 4;
+                    if (correct >= 6) return 3.5;
+                    if (correct >= 3) return 3;
                     return 2.5;
                 };
 
@@ -162,6 +169,8 @@ export const getAllReadingTestResults = async (req, res) => {
                     testNumber: `Practice Test-${userTestAttempts.length - index}`,
                     sectionId: test.readingSectionId._id,
                     sectionTitle: test.readingSectionId.title,
+                    readingTestId: test.readingSectionId.readingTestId?._id,
+                    readingTestTitle: test.readingSectionId.readingTestId?.title,
                     testDate: moment(test.createdAt).format("D MMM, YYYY"),
                     totalQuestions,
                     correctAnswers,
@@ -178,4 +187,3 @@ export const getAllReadingTestResults = async (req, res) => {
         return ThrowError(res, 500, error.message);
     }
 };
-
