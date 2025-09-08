@@ -101,7 +101,7 @@ indexRoutes.get("/getAllReadingSection", UserAuth, getAllReadingSection)
 indexRoutes.get("/getReadingSectionById/:id", UserAuth, getReadingSectionById)
 indexRoutes.put("/updateReadingSection/:id", UserAuth, isAdmin, updateReadingSection)
 indexRoutes.delete("/deleteReadingSection/:id", UserAuth, isAdmin, deleteReadingSection)
-indexRoutes.get("/getSectionsByReadingTest/:readingTestId", UserAuth, isAdmin, getSectionsByReadingTest)
+indexRoutes.get("/getSectionsByReadingTest/:readingTestId", UserAuth,  getSectionsByReadingTest)
 
 //Paragraph Routes
 indexRoutes.post("/addParagraph", UserAuth, isAdmin, addParagraph)
