@@ -111,14 +111,16 @@ export const getAllReadingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
 
+        // 🔍 Get all attempts
         const userTestAttempts = await ReadingUserAnswer.find({ userId })
             .sort({ createdAt: -1 })
-            .populate('readingSectionId', 'title'); // assumes title field exists
+            .populate('readingSectionId', 'title');
 
         if (!userTestAttempts || userTestAttempts.length === 0) {
             return sendSuccessResponse(res, "No tests found", []);
         }
 
+        // 📊 Map results
         const results = await Promise.all(
             userTestAttempts.map(async (test, index) => {
                 const totalQuestions = await ReadingQuestion.countDocuments({
@@ -126,25 +128,54 @@ export const getAllReadingTestResults = async (req, res) => {
                 });
 
                 const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
+                const wrongAnswers = totalQuestions - correctAnswers;
                 const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
+                // Status
                 let status = "Poor";
                 if (percentage >= 80) status = "Excellent";
                 else if (percentage >= 60) status = "Good";
                 else if (percentage >= 40) status = "Average";
 
+                // IELTS Band Score mapping
+                const calculateBandScore = (correct) => {
+                    if (correct >= 39) return 9;
+                    if (correct >= 37) return 8.5;
+                    if (correct >= 35) return 8;
+                    if (correct >= 33) return 7.5;
+                    if (correct >= 30) return 7;
+                    if (correct >= 27) return 6.5;
+                    if (correct >= 23) return 6;
+                    if (correct >= 19) return 5.5;
+                    if (correct >= 15) return 5;
+                    if (correct >= 12) return 4.5;
+                    if (correct >= 9)  return 4;
+                    if (correct >= 6)  return 3.5;
+                    if (correct >= 3)  return 3;
+                    return 2.5;
+                };
+
+                const bandScore = calculateBandScore(correctAnswers);
+
                 return {
-                    testNumber: `Practice Test-${userTestAttempts.length - index}`, // latest is highest number
-                    readingSectionId: test.readingSectionId._id,
-                    testDate: moment(test.createdAt).format("D, MMMM"),
+                    testId: test._id,
+                    testNumber: `Practice Test-${userTestAttempts.length - index}`,
+                    sectionId: test.readingSectionId._id,
+                    sectionTitle: test.readingSectionId.title,
+                    testDate: moment(test.createdAt).format("D MMM, YYYY"),
+                    totalQuestions,
+                    correctAnswers,
+                    wrongAnswers,
                     percentage,
-                    status
+                    status,
+                    bandScore
                 };
             })
         );
 
-        return sendSuccessResponse(res, "All Reading Test Results", results);
+        return sendSuccessResponse(res, "All Reading Test Results (Test Wise)", results);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
 };
+
