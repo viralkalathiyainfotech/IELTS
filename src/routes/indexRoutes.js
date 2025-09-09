@@ -101,7 +101,7 @@ indexRoutes.get("/getAllReadingSection", UserAuth, getAllReadingSection)
 indexRoutes.get("/getReadingSectionById/:id", UserAuth, getReadingSectionById)
 indexRoutes.put("/updateReadingSection/:id", UserAuth, isAdmin, updateReadingSection)
 indexRoutes.delete("/deleteReadingSection/:id", UserAuth, isAdmin, deleteReadingSection)
-indexRoutes.get("/getSectionsByReadingTest/:readingTestId", UserAuth,  getSectionsByReadingTest)
+indexRoutes.get("/getSectionsByReadingTest/:readingTestId", UserAuth, getSectionsByReadingTest)
 
 //Paragraph Routes
 indexRoutes.post("/addParagraph", UserAuth, isAdmin, addParagraph)
@@ -173,7 +173,7 @@ indexRoutes.get("/getAllListeningSection", UserAuth, isPremiumUser, getAllListen
 indexRoutes.get("/getListeningSectionById/:id", UserAuth, isPremiumUser, getListeningSectionById)
 indexRoutes.put("/updateListeningSection/:id", UserAuth, isAdmin, updateListeningSection)
 indexRoutes.delete("/deleteListeningSection/:id", UserAuth, isAdmin, deleteListeningSection)
-indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, isAdmin, getSectionsByListeningTest)
+indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, getSectionsByListeningTest)
 
 //ListeningAudio Routes
 indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), createListeningAudio);
@@ -181,7 +181,7 @@ indexRoutes.get('/getAllListeningAudios', UserAuth, isPremiumUser, getAllListeni
 indexRoutes.get('/getListeningAudioById/:id', UserAuth, isPremiumUser, getListeningAudioById);
 indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), updateListeningAudio);
 indexRoutes.delete('/deleteListeningAudio/:id', UserAuth, isAdmin, deleteListeningAudio);
-indexRoutes.get("/getAudioBySection/:listeningSectionId", UserAuth, isAdmin, getAudioBySection)
+indexRoutes.get("/getAudioBySection/:listeningSectionId", UserAuth, getAudioBySection)
 
 //listeningQuestion Routes
 indexRoutes.post("/addListeningQuestion", UserAuth, isAdmin, addListeningQuestion);
@@ -194,7 +194,7 @@ indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAu
 
 //writingUserAnswer Routes
 indexRoutes.post("/checkAndSubmitListeningAnswers", UserAuth, isPremiumUser, checkAndSubmitListeningAnswers)
-indexRoutes.get("/getAllListeningTestResults", UserAuth, getAllListeningTestResults)
+indexRoutes.get("/getAllListeningTestResults", UserAuth, isPremiumUser, getAllListeningTestResults)
 
 
 ///////////////////////////////////////////////////// SpeakingTest /////////////////////////////////////////////////////////
