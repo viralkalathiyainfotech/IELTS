@@ -153,27 +153,35 @@ export const getListeningSectionCorrectAnswers = async (req, res) => {
         // ✅ Sort by position
         questions.sort((a, b) => a.position - b.position);
 
-        // ✅ Prepare answers with normalized format
+        // ✅ Prepare answers in required format
         const answers = questions.map((q) => {
             let correctAnswer = q.answer;
 
-            // Convert single values → array
-            if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
-                correctAnswer = [correctAnswer];
+            // Convert null → empty string
+            if (!correctAnswer) correctAnswer = "";
+
+            // If it's an array → handle
+            if (Array.isArray(correctAnswer)) {
+                if (correctAnswer.length === 1) {
+                    correctAnswer = correctAnswer[0]; // single value → string
+                } else {
+                    correctAnswer = correctAnswer.join(", "); // multiple → string
+                }
             }
 
-            // If string looks like an array → parse
+            // If it's JSON string of array → parse
             if (
-                Array.isArray(correctAnswer) &&
-                correctAnswer.length === 1 &&
-                typeof correctAnswer[0] === "string" &&
-                correctAnswer[0].startsWith("[") &&
-                correctAnswer[0].endsWith("]")
+                typeof correctAnswer === "string" &&
+                correctAnswer.startsWith("[") &&
+                correctAnswer.endsWith("]")
             ) {
                 try {
-                    const parsed = JSON.parse(correctAnswer[0]);
+                    const parsed = JSON.parse(correctAnswer);
                     if (Array.isArray(parsed)) {
-                        correctAnswer = parsed;
+                        correctAnswer =
+                            parsed.length === 1
+                                ? parsed[0]
+                                : parsed.join(", ");
                     }
                 } catch (e) {
                     // ignore parsing error
@@ -181,7 +189,7 @@ export const getListeningSectionCorrectAnswers = async (req, res) => {
             }
 
             return {
-                number: q.position,   // ✅ position based numbering
+                number: q.position,
                 correctAnswer
             };
         });
