@@ -38,15 +38,18 @@ export const checkAndSubmitListeningAnswers = async (req, res) => {
             // Normalize userAnswer
             let userAns = userAnswer;
             if (Array.isArray(userAns)) userAns = userAns.join(" ");
-            else if (userAns !== null && typeof userAns !== 'string') userAns = String(userAns);
+            else if (userAns !== null && typeof userAns !== "string") userAns = String(userAns);
             userAns = userAns.trim().toLowerCase();
 
             // Normalize correctAnswer(s)
             let correctAnswer = question.answer;
+
+            // If not array → make array
             if (correctAnswer !== null && !Array.isArray(correctAnswer)) {
                 correctAnswer = [correctAnswer];
             }
 
+            // If stored as stringified array → parse
             if (
                 Array.isArray(correctAnswer) &&
                 correctAnswer.length === 1 &&
@@ -60,19 +63,31 @@ export const checkAndSubmitListeningAnswers = async (req, res) => {
                         correctAnswer = parsed;
                     }
                 } catch (e) {
-                    // continue with raw string
+                    // ignore
                 }
             }
 
-            const isCorrect = correctAnswer.some(ansStr =>
-                userAns === String(ansStr).trim().toLowerCase()
+            // ✅ Check correctness
+            const isCorrect = correctAnswer.some(
+                (ansStr) => userAns === String(ansStr).trim().toLowerCase()
             );
+
+            // ✅ Convert correctAnswer → string (not array)
+            let correctAnswerStr = "";
+            if (Array.isArray(correctAnswer)) {
+                correctAnswerStr =
+                    correctAnswer.length === 1
+                        ? correctAnswer[0]
+                        : correctAnswer.join(", ");
+            } else {
+                correctAnswerStr = correctAnswer || "";
+            }
 
             return {
                 questionId,
                 userAnswer: userAns,
-                correctAnswer,
-                isCorrect
+                correctAnswer: correctAnswerStr, // 👈 always string
+                isCorrect,
             };
         };
 
