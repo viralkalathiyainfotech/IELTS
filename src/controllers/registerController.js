@@ -113,8 +113,7 @@ export const updateProfileUser = async (req, res) => {
             existingUser.image = uploadResult.Location;
         }
 
-        if (req.body.firstName) existingUser.firstName = req.body.firstName;
-        if (req.body.lastName) existingUser.lastName = req.body.lastName;
+        if (req.body.name) existingUser.name = req.body.name;
         if (req.body.date_of_birth) existingUser.date_of_birth = req.body.date_of_birth;
         if (req.body.gender) existingUser.gender = req.body.gender;
         if (req.body.email) existingUser.email = req.body.email;
@@ -138,7 +137,7 @@ export const updateProfileUser = async (req, res) => {
 export const updateProfileAdmin = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, date_of_birth, gender, email, phone, role } = req.body;
+        const { name, date_of_birth, gender, email, phone, role } = req.body;
 
         if (!req.user || (!req.user.isAdmin && req.user._id.toString() !== id)) {
             return sendForbiddenResponse(res, "Access denied. You can only update your own profile.");
@@ -167,8 +166,7 @@ export const updateProfileAdmin = async (req, res) => {
             existingUser.image = uploadResult.Location;
         }
 
-        if (firstName) existingUser.firstName = firstName;
-        if (lastName) existingUser.lastName = lastName;
+        if (name) existingUser.name = name;
         if (date_of_birth) existingUser.date_of_birth = date_of_birth;
         if (gender) existingUser.gender = gender;
         if (email) existingUser.email = email;
