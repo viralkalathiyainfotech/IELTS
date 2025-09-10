@@ -65,11 +65,12 @@ registerSchema.pre('save', function (next) {
 //  JWT token create method
 registerSchema.methods.getJWT = async function () {
     const user = this;
-    const token = jwt.sign({
-        _id: user._id,
-        role: user.role || 'user',
-        isAdmin: user.role === 'admin'
-    }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+        { _id: user._id, role: user.role || 'user', isAdmin: user.role === "admin" },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+    );
+
     return token;
 };
 

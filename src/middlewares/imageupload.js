@@ -1,189 +1,104 @@
-import multer from 'multer';
-import fs from 'fs';
-import path from 'path';
-import sharp from 'sharp';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import multer from "multer";
+import path from "path";
+import sharp from "sharp";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-// Configure storage
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        // Create different folders based on field name
-        let uploadPath = 'public/images';
-
-        if (file.fieldname === 'writing_title_image') {
-            uploadPath = 'public/writing_title_image';
-        } else if (file.fieldname === 'writing_question_image') {
-            uploadPath = 'public/writing_question_image';
-        }
-
-        // Create directory if it doesn't exist
-        if (!fs.existsSync(uploadPath)) {
-            fs.mkdirSync(uploadPath, { recursive: true });
-        }
-
-        cb(null, uploadPath);
+// 🔹 AWS S3 Client (v3)
+const s3Client = new S3Client({
+    region: process.env.S3_REGION,
+    credentials: {
+        accessKeyId: String(process.env.S3_ACCESS_KEY).trim(),
+        secretAccessKey: String(process.env.S3_SECRET_KEY).trim(),
     },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
 });
 
-// File filter function
-const fileFilter = (req, file, cb) => {
-    // Accept files with common image field names
-    const allowedFieldNames = ['image', 'writing_title_image','writing_question_image'];
-
-    if (allowedFieldNames.includes(file.fieldname)) {
-        cb(null, true);
-    } else {
-        cb(new Error(`Please upload a file with one of these field names: ${allowedFieldNames.join(', ')}`));
+// 🔹 Folder Mapping in S3
+const getS3Folder = (fieldname) => {
+    switch (fieldname) {
+        case "image": return "images";
+        case "writing_title_image": return "writing_title_images";
+        case "writing_question_image": return "writing_question_images";
+        case "listening_audio": return "listening_audios";
+        case "speaking_audio": return "speaking_audios";
+        default: return "others";
     }
 };
 
-// Create multer instance
+// 🔹 Multer Storage (memory storage for buffer)
+const storage = multer.memoryStorage();
 const upload = multer({
-    storage: storage,
-    fileFilter: fileFilter
+    storage,
+    fileFilter: (req, file, cb) => {
+        const isImage = file.mimetype.startsWith("image/");
+        const isAudio = file.mimetype.startsWith("audio/");
+        const isOctet = file.mimetype === "application/octet-stream";
+        const ext = path.extname(file.originalname).toLowerCase();
+
+        const imageFields = ["image", "writing_title_image", "writing_question_image"];
+        const audioFields = ["listening_audio", "speaking_audio"];
+
+        if (imageFields.includes(file.fieldname)) {
+            return (isImage || isOctet || ext === ".jfif") ? cb(null, true) : cb(new Error("Invalid image file"));
+        }
+        if (audioFields.includes(file.fieldname)) {
+            return isAudio ? cb(null, true) : cb(new Error("Invalid audio file"));
+        }
+        return cb(new Error(`Invalid field name: ${file.fieldname}`));
+    },
+    limits: { fileSize: 1024 * 1024 * 200 }, // 200MB
 });
 
-// Create upload handlers
-const uploadHandlers = {
-    single: (fieldName) => {
-        return upload.single(fieldName);
-    }
-};
+// 🔹 Convert JFIF / unsupported formats to JPEG
+export const convertJfifToJpeg = async (req, res, next) => {
+    if (!req.file) return next();
 
-// Error handling middleware
-const handleMulterError = (err, req, res, next) => {
-    console.log('Upload error:', err);
-
-    if (err instanceof multer.MulterError) {
-        return res.status(400).json({
-            success: false,
-            message: err.message
-        });
-    } else if (err) {
-        return res.status(400).json({
-            success: false,
-            message: err.message
-        });
+    const ext = path.extname(req.file.originalname).toLowerCase();
+    if (ext === ".jfif") {
+        try {
+            const buffer = await sharp(req.file.buffer).jpeg().toBuffer();
+            req.file.buffer = buffer;
+            req.file.originalname = req.file.originalname.replace(/\.jfif$/i, ".jpg");
+        } catch (err) {
+            console.warn("JFIF conversion failed, using original buffer:", err.message);
+        }
     }
     next();
 };
 
-const convertJfifToJpeg = async (req, res, next) => {
-    try {
-        if (!req.file) return next();
-
-        const file = req.file;
-        const ext = path.extname(file.originalname).toLowerCase();
-
-        if (ext === '.jfif' || file.mimetype === 'image/jfif' || file.mimetype === 'application/octet-stream') {
-            const inputPath = file.path;
-            const outputPath = inputPath.replace('.jfif', '.jpg');
-
-            await sharp(inputPath)
-                .jpeg()
-                .toFile(outputPath);
-
-            // Update the file path in req.file
-            file.path = outputPath;
-            file.filename = path.basename(outputPath);
-
-            // Delete the original JFIF file
-            fs.unlinkSync(inputPath);
-        }
-
-        next();
-    } catch (err) {
-        console.error('Error in convertJfifToJpeg:', err);
-        next(err);
-    }
+// 🔹 Upload buffer to S3 (v3)
+export const uploadToS3 = async (buffer, filename, folder, mimetype = "application/octet-stream") => {
+    const Key = `${folder}/${Date.now()}_${filename}`;
+    await s3Client.send(new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key,
+        Body: buffer,
+        ContentType: mimetype,
+    }));
+    return {
+        Location: `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.S3_REGION}.amazonaws.com/${Key}`,
+    };
 };
 
-const readingStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const readingUploadDir = path.join(__dirname, '../../public/uploads/reading/');
-        if (!fs.existsSync(readingUploadDir)) {
-            fs.mkdirSync(readingUploadDir, { recursive: true });
-        }
-        cb(null, readingUploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
-const readingFileFilter = (req, file, cb) => {
-    // Accept only audio files
-    const allowedTypes = /mp3|wav|m4a/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.test(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only audio files are allowed!'), false);
-    }
+// 🔹 Delete file from S3 (v3)
+export const deleteFromS3 = async (fileUrl) => {
+    const key = fileUrl.split(".amazonaws.com/")[1];
+    if (!key) return;
+    await s3Client.send(new DeleteObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: key,
+    }));
 };
 
-const readingUpload = multer({ storage: readingStorage, fileFilter: readingFileFilter });
+// 🔹 Export multer fields
+export const uploadMedia = upload.fields([
+    { name: "image", maxCount: 1 },
+    { name: "writing_title_image", maxCount: 1 },
+    { name: "writing_question_image", maxCount: 1 },
+    { name: "listening_audio", maxCount: 1 },
+    { name: "speaking_audio", maxCount: 1 },
+]);
 
-const listeningAudioStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const listeningUploadDir = path.join(__dirname, '../../public/listeningAudio/');
-        if (!fs.existsSync(listeningUploadDir)) {
-            fs.mkdirSync(listeningUploadDir, { recursive: true });
-        }
-        cb(null, listeningUploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
-const listeningAudioFileFilter = (req, file, cb) => {
-    // Accept only audio files
-    const allowedTypes = /mp3|wav|m4a/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.test(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only audio files are allowed!'), false);
-    }
-};
-
-const listeningAudioUpload = multer({ storage: listeningAudioStorage, fileFilter: listeningAudioFileFilter });
-
-const speakingAudioStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const speakingUploadDir = path.join(__dirname, '../../public/userAudio/');
-        if (!fs.existsSync(speakingUploadDir)) {
-            fs.mkdirSync(speakingUploadDir, { recursive: true });
-        }
-        cb(null, speakingUploadDir);
-    },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + file.originalname);
-    }
-});
-
-const speakingAudioFileFilter = (req, file, cb) => {
-    // Accept only audio files
-    const allowedTypes = /mp3|wav|m4a/;
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.test(ext)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Only audio files are allowed!'), false);
-    }
-};
-
-const speakingAudioUpload = multer({ storage: speakingAudioStorage, fileFilter: speakingAudioFileFilter });
-
-export { upload, uploadHandlers, handleMulterError, convertJfifToJpeg, readingUpload, listeningAudioUpload, speakingAudioUpload };
-export default uploadHandlers;
+export default upload;

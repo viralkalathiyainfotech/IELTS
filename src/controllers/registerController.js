@@ -9,8 +9,9 @@ import ReadingUserAnswer from "../models/readingUserAnswerModel.js"
 import ListeningUserAnswer from "../models/listeningUserAnswerModel.js"
 import WritingUserAnswer from "../models/writingUserAnswerModel.js"
 import SpeakingUserAnswer from "../models/speakingUserAnswerModel.js"
+import { uploadToS3, deleteFromS3 } from "../middlewares/imageupload.js";
+import sharp from "sharp";
 
-// Create new register
 export const createRegister = async (req, res) => {
     try {
         const { name, phone, email, password, confirmedPassword, role } = req.body;
@@ -56,18 +57,15 @@ export const createRegister = async (req, res) => {
     }
 };
 
-// Get single register by ID
 export const getRegisterById = async (req, res) => {
     try {
         const { id } = req.params;
 
         let query = { _id: id };
-        // Check if user exists and has proper role
         if (!req.user) {
             return sendUnauthorizedResponse(res, "Authentication required");
         }
 
-        // Check if user is admin or accessing their own profile
         const isAdmin = req.user.role === 'admin';
         if (!isAdmin && req.user._id.toString() !== id) {
             return sendForbiddenResponse(res, "Access denied. You can only view your own profile.");
@@ -84,11 +82,9 @@ export const getRegisterById = async (req, res) => {
     }
 };
 
-// Update profile only user
 export const updateProfileUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { firstName, lastName, date_of_birth, gender, email, phone, role } = req.body;
 
         if (!req.user || (!req.user.isAdmin && req.user._id.toString() !== id)) {
             return sendForbiddenResponse(res, "Access denied. You can only update your own profile.");
@@ -96,74 +92,49 @@ export const updateProfileUser = async (req, res) => {
 
         const existingUser = await Register.findById(id);
         if (!existingUser) {
-            if (req.file) {
-                const filePath = path.resolve(req.file.path);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            }
             return sendErrorResponse(res, 404, "User not found");
         }
 
-        // Handle image upload
         if (req.file) {
-            // Convert the file path to a URL path
-            const newImagePath = `/public/images/${path.basename(req.file.path)}`;
+            let fileBuffer = req.file.buffer;
 
-            // Delete old image if exists
-            if (existingUser.image) {
-                const oldImagePath = path.join(process.cwd(), existingUser.image);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlinkSync(oldImagePath);
-                }
+            try {
+                fileBuffer = await sharp(fileBuffer).jpeg().toBuffer();
+            } catch (err) {
+                console.warn("Sharp conversion failed, uploading original file:", err.message);
             }
 
-            existingUser.image = newImagePath;
+            const uploadResult = await uploadToS3(fileBuffer, req.file.originalname, "userProfileImages");
+
+            if (existingUser.image) {
+                await deleteFromS3(existingUser.image);
+            }
+
+            existingUser.image = uploadResult.Location;
         }
 
-        // Update other fields
-        if (firstName) {
-            existingUser.firstName = firstName;
-        }
-        if (lastName) {
-            existingUser.lastName = lastName;
-        }
-        if (date_of_birth) {
-            existingUser.date_of_birth = date_of_birth;
-        }
-        if (gender) {
-            existingUser.gender = gender;
-        }
-        if (email) {
-            existingUser.email = email;
-        }
-        if (phone) {
-            existingUser.phone = phone;
-        }
-        if (role) {
-            existingUser.role = role;
-            existingUser.isAdmin = role === 'admin';
+        if (req.body.firstName) existingUser.firstName = req.body.firstName;
+        if (req.body.lastName) existingUser.lastName = req.body.lastName;
+        if (req.body.date_of_birth) existingUser.date_of_birth = req.body.date_of_birth;
+        if (req.body.gender) existingUser.gender = req.body.gender;
+        if (req.body.email) existingUser.email = req.body.email;
+        if (req.body.phone) existingUser.phone = req.body.phone;
+        if (req.body.role) {
+            existingUser.role = req.body.role;
+            existingUser.isAdmin = req.body.role === "admin";
         }
 
         await existingUser.save();
 
-        // Return user data without password
         const userResponse = existingUser.toObject();
         delete userResponse.password;
 
         return sendSuccessResponse(res, "User updated successfully", userResponse);
     } catch (error) {
-        if (req.file) {
-            const filePath = path.resolve(req.file.path);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        }
-        return ThrowError(res, 500, error.message)
+        return ThrowError(res, 500, error.message);
     }
 };
 
-//update profile only Admin
 export const updateProfileAdmin = async (req, res) => {
     try {
         const { id } = req.params;
@@ -175,74 +146,49 @@ export const updateProfileAdmin = async (req, res) => {
 
         const existingUser = await Register.findById(id);
         if (!existingUser) {
-            if (req.file) {
-                const filePath = path.resolve(req.file.path);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            }
             return sendErrorResponse(res, 404, "User not found");
         }
 
-        // Handle image upload
         if (req.file) {
-            // Convert the file path to a URL path
-            const newImagePath = `/public/images/${path.basename(req.file.path)}`;
+            let fileBuffer = req.file.buffer;
 
-            // Delete old image if exists
-            if (existingUser.image) {
-                const oldImagePath = path.join(process.cwd(), existingUser.image);
-                if (fs.existsSync(oldImagePath)) {
-                    fs.unlinkSync(oldImagePath);
-                }
+            try {
+                fileBuffer = await sharp(req.file.buffer).jpeg().toBuffer();
+            } catch (err) {
+                console.warn("Sharp conversion failed, uploading original file:", err.message);
             }
 
-            existingUser.image = newImagePath;
+            const uploadResult = await uploadToS3(fileBuffer, req.file.originalname, "userProfileImages");
+
+            if (existingUser.image) {
+                await deleteFromS3(existingUser.image);
+            }
+
+            existingUser.image = uploadResult.Location;
         }
 
-        // Update other fields
-        if (firstName) {
-            existingUser.firstName = firstName;
-        }
-        if (lastName) {
-            existingUser.lastName = lastName;
-        }
-        if (date_of_birth) {
-            existingUser.date_of_birth = date_of_birth;
-        }
-        if (gender) {
-            existingUser.gender = gender;
-        }
-        if (email) {
-            existingUser.email = email;
-        }
-        if (phone) {
-            existingUser.phone = phone;
-        }
+        if (firstName) existingUser.firstName = firstName;
+        if (lastName) existingUser.lastName = lastName;
+        if (date_of_birth) existingUser.date_of_birth = date_of_birth;
+        if (gender) existingUser.gender = gender;
+        if (email) existingUser.email = email;
+        if (phone) existingUser.phone = phone;
         if (role) {
             existingUser.role = role;
-            existingUser.isAdmin = role === 'admin';
+            existingUser.isAdmin = role === "admin";
         }
 
         await existingUser.save();
 
-        // Return user data without password
         const userResponse = existingUser.toObject();
         delete userResponse.password;
 
         return sendSuccessResponse(res, "User updated successfully", userResponse);
     } catch (error) {
-        if (req.file) {
-            const filePath = path.resolve(req.file.path);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
-            }
-        }
-        return ThrowError(res, 500, error.message)
+        return ThrowError(res, 500, error.message);
     }
 };
 
-// Delete register
 export const deleteRegister = async (req, res) => {
     try {
         const { id } = req.params;
@@ -253,49 +199,33 @@ export const deleteRegister = async (req, res) => {
         }
 
         if (existingUser.trainer_image) {
-            const imagePath = path.resolve(existingUser.trainer_image);
-
-            if (fs.existsSync(imagePath)) {
-                fs.unlinkSync(imagePath);
-            }
+            await deleteFromS3(existingUser.trainer_image);
         }
 
         await Register.findByIdAndDelete(id);
 
         return sendSuccessResponse(res, "Member deleted successfully");
     } catch (error) {
-        return ThrowError(res, 500, error.message)
+        return ThrowError(res, 500, error.message);
     }
 };
 
-// Get all users (admin only)
 export const getAllUsers = async (req, res) => {
     try {
-        // Check if user is authenticated and is admin
-        if (!req.user) {
-            return sendUnauthorizedResponse(res, "Authentication required");
-        }
+        if (!req.user) return sendUnauthorizedResponse(res, "Authentication required");
+        if (!req.user.isAdmin) return sendForbiddenResponse(res, "Access denied. Only admins can view all users.");
 
-        if (!req.user.isAdmin) {
-            return sendForbiddenResponse(res, "Access denied. Only admins can view all users.");
-        }
-
-        // Find all users with role 'user'
         const users = await Register.find({ role: 'user' }).select('-password');
 
-        // Check if any users were found
         if (!users || users.length === 0) {
             return sendSuccessResponse(res, "No users found", []);
         }
 
-        // Send a success response with the fetched users
         return sendSuccessResponse(res, "Users fetched successfully", users);
-
     } catch (error) {
-        return ThrowError(res, 500, error.message)
+        return ThrowError(res, 500, error.message);
     }
 };
-
 
 export const getAllUserTestResults = async (req, res) => {
     try {
@@ -310,7 +240,7 @@ export const getAllUserTestResults = async (req, res) => {
 
         const allTests = [];
 
-        const processTests = (tests, moduleName, sectionKey) => {
+        const processTests = (tests, moduleName) => {
             tests.forEach(test => {
                 const totalQuestions = test.answers.length;
                 const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
@@ -337,12 +267,11 @@ export const getAllUserTestResults = async (req, res) => {
             });
         };
 
-        processTests(writingTests, "Writing", "writingSectionId");
-        processTests(listeningTests, "Listening", "listeningSectionId");
-        processTests(readingTests, "Reading", "readingSectionId");
-        processTests(speakingTests, "Speaking", "speakingTopicId");
+        processTests(writingTests, "Writing");
+        processTests(listeningTests, "Listening");
+        processTests(readingTests, "Reading");
+        processTests(speakingTests, "Speaking");
 
-        // Group by date
         const grouped = {};
         allTests.forEach(test => {
             if (!grouped[test.date]) grouped[test.date] = [];
@@ -355,4 +284,3 @@ export const getAllUserTestResults = async (req, res) => {
         return ThrowError(res, 500, error.message);
     }
 };
-

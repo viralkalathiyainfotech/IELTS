@@ -5,15 +5,16 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev":"nodemon index.js"
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.828.0",
+    "@aws-sdk/client-s3": "^3.884.0",
     "@google-cloud/speech": "^7.2.0",
+    "aws-sdk": "^2.1692.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "body-parser": "^2.2.0",
@@ -29,7 +30,7 @@
     "moment": "^2.30.1",
     "mongoose": "^8.15.2",
     "morgan": "^1.10.0",
-    "multer": "^2.0.1",
+    "multer": "^2.0.2",
     "multer-s3": "^3.0.1",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.3",

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
-import moment from "moment"
+import moment from "moment";
 import stringSimilarity from 'string-similarity';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -13,6 +13,7 @@ import SpeakingQuestion from '../models/speakingQuestionModel.js';
 import SpeakingUserAnswer from '../models/speakingUserAnswerModel.js';
 import { sendBadRequestResponse, sendSuccessResponse } from '../utils/ResponseUtils.js';
 import { ThrowError } from '../utils/ErrorUtils.js';
+import { uploadToS3 } from '../middlewares/imageupload.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,43 +37,28 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
             return sendBadRequestResponse(res, "questionId, speakingTopicId and audio are required!");
         }
 
-        if (
-            !mongoose.Types.ObjectId.isValid(userId) ||
+        if (!mongoose.Types.ObjectId.isValid(userId) ||
             !mongoose.Types.ObjectId.isValid(questionId) ||
-            !mongoose.Types.ObjectId.isValid(speakingTopicId)
-        ) {
+            !mongoose.Types.ObjectId.isValid(speakingTopicId)) {
             return sendBadRequestResponse(res, "Invalid IDs!");
         }
 
-        if (!req.file) {
-            return sendBadRequestResponse(res, "Audio file is required!");
-        }
+        if (!req.file) return sendBadRequestResponse(res, "Audio file is required!");
 
-        let audioPath = req.file.path;
-        const ext = path.extname(audioPath).toLowerCase();
+        const s3AudioResult = await uploadToS3(req.file.buffer, req.file.originalname, "speaking_audios", req.file.mimetype);
+        const audioUrl = s3AudioResult.Location;
 
-        if (ext !== '.wav') {
-            const wavPath = path.join('public/userAudio', `${Date.now()}.wav`);
-            await convertToWav(audioPath, wavPath);
-            audioPath = wavPath;
-        }
+        const wavBuffer = req.file.buffer;
 
-        // ✅ Ensure transcripts directory exists
-        const transcriptsDir = path.join(__dirname, "../transcripts");
-        if (!fs.existsSync(transcriptsDir)) {
-            fs.mkdirSync(transcriptsDir, { recursive: true });
-        }
-
-        const transcriptPath = path.join(transcriptsDir, `transcript_${Date.now()}.txt`);
         const tempScriptPath = path.join(__dirname, "whisper_temp_script.py");
+        const transcriptTempPath = path.join(__dirname, `transcript_${Date.now()}.txt`);
 
-        // 📄 Generate Python Whisper script content
         const pythonScript = `
 import whisper
 import sys
 import os
 
-audio_path = sys.argv[1]  # Accept any file format
+audio_path = sys.argv[1]
 model_size = sys.argv[2]
 output_path = sys.argv[3]
 
@@ -96,87 +82,73 @@ if not text:
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(text)
 `;
-
-
-        // 🧾 Write Python script to temp file
         fs.writeFileSync(tempScriptPath, pythonScript);
 
-        // ▶️ Execute Python Whisper script
+        const tempAudioPath = path.join(__dirname, `temp_audio_${Date.now()}.wav`);
+        fs.writeFileSync(tempAudioPath, wavBuffer);
+
         try {
-            const command = `py "${tempScriptPath}" "${audioPath}" "base" "${transcriptPath}"`;
+            const command = `py "${tempScriptPath}" "${tempAudioPath}" "base" "${transcriptTempPath}"`;
             execSync(command, { encoding: 'utf8' });
         } catch (err) {
-            console.error("Whisper Transcription Error:", err.message); // <-- Add this
+            console.error("Whisper Transcription Error:", err.message);
+            fs.unlinkSync(tempScriptPath);
+            fs.unlinkSync(tempAudioPath);
             return sendBadRequestResponse(res, "Transcription failed. Make sure Python & Whisper are installed.");
         }
 
-        // 📖 Read transcript
-        let transcript = '';
-        if (fs.existsSync(transcriptPath)) {
-            transcript = fs.readFileSync(transcriptPath, 'utf8').trim();
-        }
+        let transcriptText = '';
+        if (fs.existsSync(transcriptTempPath)) transcriptText = fs.readFileSync(transcriptTempPath, 'utf8').trim();
 
-        // 🧹 Cleanup only temp script (not transcript)
-        fs.unlinkSync(tempScriptPath);
-
-        if (!transcript) {
+        if (!transcriptText) {
+            fs.unlinkSync(tempScriptPath);
+            fs.unlinkSync(tempAudioPath);
+            fs.unlinkSync(transcriptTempPath);
             return sendBadRequestResponse(res, "Transcript not generated.");
         }
 
-        // ✅ Compare transcript with correct answer
+        const transcriptBuffer = Buffer.from(transcriptText, 'utf-8');
+        const s3TranscriptResult = await uploadToS3(transcriptBuffer, `transcript_${Date.now()}.txt`, "transcripts", "text/plain");
+        const transcriptUrl = s3TranscriptResult.Location;
+
+        fs.unlinkSync(tempScriptPath);
+        fs.unlinkSync(tempAudioPath);
+        fs.unlinkSync(transcriptTempPath);
+
         const question = await SpeakingQuestion.findById(questionId);
-        if (!question) {
-            return sendBadRequestResponse(res, "Question not found!");
-        }
+        if (!question) return sendBadRequestResponse(res, "Question not found!");
 
         let correctAnswer = Array.isArray(question.answer) ? question.answer[0] : question.answer;
         if (typeof correctAnswer === "string" && correctAnswer.startsWith("[") && correctAnswer.endsWith("]")) {
-            try {
-                const parsed = JSON.parse(correctAnswer);
-                if (Array.isArray(parsed)) correctAnswer = parsed[0];
-            } catch (_) { /* fallback to string */ }
+            try { const parsed = JSON.parse(correctAnswer); if (Array.isArray(parsed)) correctAnswer = parsed[0]; } catch (_) { }
         }
 
-        const cleanTranscript = transcript.toLowerCase().trim();
+        const cleanTranscript = transcriptText.toLowerCase().trim();
         const cleanAnswer = (correctAnswer || "").toLowerCase().trim();
 
         const similarity = stringSimilarity.compareTwoStrings(cleanTranscript, cleanAnswer);
         const similarityPercentage = Math.round(similarity * 100);
         const isCorrect = similarity >= 0.7;
 
-        // 🗃️ Save user answer to DB
         let userAnswerDoc = await SpeakingUserAnswer.findOne({ userId, speakingTopicId });
-        if (!userAnswerDoc) {
-            userAnswerDoc = new SpeakingUserAnswer({
-                userId,
-                speakingTopicId,
-                answers: []
-            });
-        }
+        if (!userAnswerDoc) userAnswerDoc = new SpeakingUserAnswer({ userId, speakingTopicId, answers: [] });
 
         const updatedAnswerObj = {
             questionId,
-            audioPath,
-            transcript,
+            audioPath: audioUrl,
+            transcript: transcriptUrl,
             correctAnswer,
             similarityPercentage,
             isCorrect
         };
 
         const existingIndex = userAnswerDoc.answers.findIndex(ans => ans.questionId.toString() === questionId);
-        if (existingIndex !== -1) {
-            userAnswerDoc.answers[existingIndex] = updatedAnswerObj;
-        } else {
-            userAnswerDoc.answers.push(updatedAnswerObj);
-        }
+        if (existingIndex !== -1) userAnswerDoc.answers[existingIndex] = updatedAnswerObj;
+        else userAnswerDoc.answers.push(updatedAnswerObj);
 
         await userAnswerDoc.save();
 
-        return sendSuccessResponse(res, "Answer saved and evaluated", {
-            userId,
-            speakingTopicId,
-            answer: updatedAnswerObj
-        });
+        return sendSuccessResponse(res, "Answer saved and evaluated", { userId, speakingTopicId, answer: updatedAnswerObj });
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -187,54 +159,34 @@ export const getAllSpeakingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
 
-        // 🔍 Get all attempts with nested populate
         const userTestAttempts = await SpeakingUserAnswer.find({ userId })
             .sort({ createdAt: -1 })
             .populate({
                 path: "speakingTopicId",
                 select: "title speakingTestId",
-                populate: {
-                    path: "speakingTestId",
-                    select: "title total_question"
-                }
+                populate: { path: "speakingTestId", select: "title total_question" }
             });
 
-        if (!userTestAttempts || userTestAttempts.length === 0) {
-            return sendSuccessResponse(res, "No tests found", []);
-        }
+        if (!userTestAttempts || userTestAttempts.length === 0) return sendSuccessResponse(res, "No tests found", []);
 
         const results = await Promise.all(
             userTestAttempts.map(async (test, index) => {
-                const totalQuestions = await SpeakingQuestion.countDocuments({
-                    speakingTopicId: test.speakingTopicId._id
-                });
-
+                const totalQuestions = await SpeakingQuestion.countDocuments({ speakingTopicId: test.speakingTopicId._id });
                 const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
                 const wrongAnswers = totalQuestions - correctAnswers;
                 const percentage = Math.round((correctAnswers / totalQuestions) * 100);
 
-                // Status
                 let status = "Poor";
                 if (percentage >= 80) status = "Excellent";
                 else if (percentage >= 60) status = "Good";
                 else if (percentage >= 40) status = "Average";
 
-                // IELTS Band Score mapping
                 const calculateBandScore = (correct) => {
-                    if (correct >= 39) return 9;
-                    if (correct >= 37) return 8.5;
-                    if (correct >= 35) return 8;
-                    if (correct >= 33) return 7.5;
-                    if (correct >= 30) return 7;
-                    if (correct >= 27) return 6.5;
-                    if (correct >= 23) return 6;
-                    if (correct >= 19) return 5.5;
-                    if (correct >= 15) return 5;
-                    if (correct >= 12) return 4.5;
-                    if (correct >= 9) return 4;
-                    if (correct >= 6) return 3.5;
-                    if (correct >= 3) return 3;
-                    return 2.5;
+                    if (correct >= 39) return 9; if (correct >= 37) return 8.5; if (correct >= 35) return 8;
+                    if (correct >= 33) return 7.5; if (correct >= 30) return 7; if (correct >= 27) return 6.5;
+                    if (correct >= 23) return 6; if (correct >= 19) return 5.5; if (correct >= 15) return 5;
+                    if (correct >= 12) return 4.5; if (correct >= 9) return 4; if (correct >= 6) return 3.5;
+                    if (correct >= 3) return 3; return 2.5;
                 };
 
                 const bandScore = calculateBandScore(correctAnswers);
@@ -252,7 +204,8 @@ export const getAllSpeakingTestResults = async (req, res) => {
                     wrongAnswers,
                     percentage,
                     status,
-                    bandScore
+                    bandScore,
+                    answers: test.answers
                 };
             })
         );
@@ -263,4 +216,3 @@ export const getAllSpeakingTestResults = async (req, res) => {
         return ThrowError(res, 500, error.message);
     }
 };
-

@@ -1,5 +1,5 @@
 import express from "express";
-import { upload, convertJfifToJpeg, listeningAudioUpload, speakingAudioUpload } from "../middlewares/imageupload.js";
+import upload, { convertJfifToJpeg, uploadMedia } from "../middlewares/imageupload.js";
 import { isAdmin, isUser, UserAuth, isPremiumUser } from "../middlewares/auth.js";
 import { createRegister, getRegisterById, getAllUsers, updateProfileUser, updateProfileAdmin, getAllUserTestResults } from "../controllers/registerController.js";
 import { changePassword, forgotPassword, googleLogin, loginUser, resetPassword, VerifyEmail } from '../controllers/loginController.js';
@@ -26,6 +26,8 @@ import { createSpekingTest, deleteSpeakingTest, getAllSpeakingTest, getSpeakingT
 import { addSpeakingTopic, deleteSpeakingTopic, getAllSpeakingTopic, getSpeakingTopicById, updateSpeakingTopic } from "../controllers/speakingTopicController.js";
 import { addSpeakingQuestion, deleteSpeakingQuestion, getAllSpeakingQuestions, getSpeakingQuestionById, getSpeakingQuestionBySection, getSpeakingSectionCorrectAnswers, updateSpeakingQuestion } from "../controllers/speakingQuestionController.js";
 import { checkAndSubmitSpeakingAnswer, getAllSpeakingTestResults } from "../controllers/speakingUserAnswerController.js";
+import { ListObjectsV2Command, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 
 
 const indexRoutes = express.Router()
@@ -34,8 +36,8 @@ const indexRoutes = express.Router()
 indexRoutes.post("/createRegister", createRegister)
 indexRoutes.get("/getRegisterById/:id", UserAuth, getRegisterById)
 indexRoutes.get("/getAllUsers", UserAuth, getAllUsers)
-indexRoutes.put("/updateProfileUser/:id", UserAuth, isUser, upload.single("image"), convertJfifToJpeg, updateProfileUser)
-indexRoutes.put("/updateProfileAdmin/:id", UserAuth, isAdmin, upload.single("image"), convertJfifToJpeg, updateProfileAdmin)
+indexRoutes.put("/updateProfileUser/:id", UserAuth, isUser, upload.single("image"), convertJfifToJpeg, updateProfileUser);
+indexRoutes.put("/updateProfileAdmin/:id", UserAuth, isAdmin, upload.single("image"), convertJfifToJpeg, updateProfileAdmin);
 indexRoutes.get("/getAllUserTestResults", UserAuth, getAllUserTestResults)
 
 //login Routes
@@ -136,18 +138,18 @@ indexRoutes.put("/updateWritingTest/:id", UserAuth, isAdmin, updateWritingTest)
 indexRoutes.delete("/deleteWritingTest/:id", UserAuth, isAdmin, deleteWritingTest)
 
 //writingSection Routes
-indexRoutes.post("/addWritingSection", UserAuth, isAdmin, upload.single("writing_title_image"), convertJfifToJpeg, addWritingSection)
+indexRoutes.post("/addWritingSection", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, addWritingSection)
 indexRoutes.get("/getAllWritingSection", UserAuth, isPremiumUser, getAllWritingSection)
 indexRoutes.get("/getWritingSectionById/:id", UserAuth, isPremiumUser, getWritingSectionById)
 indexRoutes.put("/updateWritingSection/:id", UserAuth, isAdmin, upload.single("writing_title_image"), convertJfifToJpeg, updateWritingSection)
 indexRoutes.delete("/deleteWritingSection/:id", UserAuth, isAdmin, deleteWritingSection)
 
 //writingQuestion Routes
-indexRoutes.post("/addWritingQuestion", UserAuth, isAdmin, upload.single("writing_question_image"), convertJfifToJpeg, addWritingQuestion);
+indexRoutes.post("/addWritingQuestion", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, addWritingQuestion);
 indexRoutes.get("/getAllWritingQuestions", UserAuth, isPremiumUser, getAllWritingQuestions)
 indexRoutes.get("/getWritingQuestionById/:id", UserAuth, isPremiumUser, getWritingQuestionById)
 indexRoutes.get("/getWritingQuestionBySection/:writingSectionId", UserAuth, isPremiumUser, getWritingQuestionBySection)
-indexRoutes.put("/updateWritingQuestion/:id", UserAuth, isAdmin, upload.single("writing_question_image"), convertJfifToJpeg, updateWritingQuestion)
+indexRoutes.put("/updateWritingQuestion/:id", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, updateWritingQuestion)
 indexRoutes.delete("/deleteWritingQuestion/:id", UserAuth, isAdmin, deleteWritingQuestion)
 indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, isPremiumUser, getWritingSectionCorrectAnswers)
 
@@ -176,10 +178,10 @@ indexRoutes.delete("/deleteListeningSection/:id", UserAuth, isAdmin, deleteListe
 indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, getSectionsByListeningTest)
 
 //ListeningAudio Routes
-indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), createListeningAudio);
+indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, upload.single('listening_audio'), createListeningAudio);
 indexRoutes.get('/getAllListeningAudios', UserAuth, isPremiumUser, getAllListeningAudios);
 indexRoutes.get('/getListeningAudioById/:id', UserAuth, isPremiumUser, getListeningAudioById);
-indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, listeningAudioUpload.single('listeningAudio'), updateListeningAudio);
+indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, upload.single('listening_audio'), updateListeningAudio);
 indexRoutes.delete('/deleteListeningAudio/:id', UserAuth, isAdmin, deleteListeningAudio);
 indexRoutes.get("/getAudioBySection/:listeningSectionId", UserAuth, getAudioBySection)
 
@@ -224,8 +226,55 @@ indexRoutes.delete("/deleteSpeakingQuestion/:id", UserAuth, isAdmin, deleteSpeak
 indexRoutes.get("/getSpeakingSectionCorrectAnswers/:speakingTopicId", UserAuth, isPremiumUser, getSpeakingSectionCorrectAnswers)
 
 //SpeakingUserAnswer Routes
-indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser, isPremiumUser, speakingAudioUpload.single('speakingAudio'), checkAndSubmitSpeakingAnswer)
+indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser, isPremiumUser, upload.single('speaking_audio'), checkAndSubmitSpeakingAnswer)
 indexRoutes.get("/getAllSpeakingTestResults", UserAuth, isPremiumUser, getAllSpeakingTestResults)
+
+const s3Client = new S3Client({
+    region: process.env.S3_REGION,
+    credentials: {
+        accessKeyId: process.env.S3_ACCESS_KEY,
+        secretAccessKey: process.env.S3_SECRET_KEY,
+    },
+});
+
+// ✅ List all files in bucket
+indexRoutes.get("/listBucket", async (req, res) => {
+    try {
+        const command = new ListObjectsV2Command({ Bucket: process.env.S3_BUCKET_NAME });
+        const response = await s3Client.send(command);
+
+        const files = (response.Contents || []).map(file => ({
+            Key: file.Key,
+            Size: file.Size,
+            LastModified: file.LastModified,
+            ETag: file.ETag,
+            StorageClass: file.StorageClass,
+        }));
+
+        return res.json({ success: true, files });
+    } catch (err) {
+        console.error("Error listing bucket:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+// ✅ Delete a file from bucket
+indexRoutes.delete("/deleteBucketFile", async (req, res) => {
+    try {
+        const { key } = req.body; // example: "images/1757483363902-9.jfif"
+        if (!key) return res.status(400).json({ success: false, message: "File key is required" });
+
+        await s3Client.send(new DeleteObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: key,
+        }));
+
+        return res.json({ success: true, message: `File deleted successfully: ${key}` });
+    } catch (err) {
+        console.error("Error deleting file:", err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
 
 
 export default indexRoutes  

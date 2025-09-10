@@ -133,7 +133,6 @@ export const checkAndSubmitWritingAnswers = async (req, res) => {
     }
 };
 
-
 export const getAllWritingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
@@ -157,12 +156,17 @@ export const getAllWritingTestResults = async (req, res) => {
         const results = await Promise.all(
             userTestAttempts.map(async (test, index) => {
                 const totalQuestions = await WritingQuestion.countDocuments({
-                    writingSectionId: test.writingSectionId._id
+                    writingSectionId: test.writingSectionId?._id
                 });
 
                 const correctAnswers = test.answers.filter(ans => ans.isCorrect).length;
-                const wrongAnswers = totalQuestions - correctAnswers;
-                const percentage = Math.round((correctAnswers / totalQuestions) * 100);
+                const wrongAnswers = totalQuestions > 0 ? totalQuestions - correctAnswers : 0;
+
+                // ✅ Safe percentage calculation
+                const percentage =
+                    totalQuestions > 0
+                        ? Math.round((correctAnswers / totalQuestions) * 100)
+                        : 0;
 
                 // Status
                 let status = "Poor";
@@ -193,10 +197,10 @@ export const getAllWritingTestResults = async (req, res) => {
                 return {
                     testId: test._id,
                     testNumber: `Practice Test-${userTestAttempts.length - index}`,
-                    sectionId: test.writingSectionId._id,
-                    sectionTitle: test.writingSectionId.title || "Untitled",
-                    writingTestId: test.writingSectionId.writingTestId?._id,
-                    writingTestTitle: test.writingSectionId.writingTestId?.title,
+                    sectionId: test.writingSectionId?._id,
+                    sectionTitle: test.writingSectionId?.title || "Untitled",
+                    writingTestId: test.writingSectionId?.writingTestId?._id,
+                    writingTestTitle: test.writingSectionId?.writingTestId?.title,
                     testDate: moment(test.createdAt).format("D MMM, YYYY"),
                     totalQuestions,
                     correctAnswers,
