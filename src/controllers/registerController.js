@@ -276,7 +276,13 @@ export const getAllUserTestResults = async (req, res) => {
             grouped[test.date].push(test);
         });
 
-        return sendSuccessResponse(res, "My Test Results", grouped);
+        // Convert grouped object into array
+        const resultArray = Object.keys(grouped).map(date => ({
+            date,
+            data: grouped[date]
+        }));
+
+        return sendSuccessResponse(res, "My Test Results", resultArray);
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
