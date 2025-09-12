@@ -136,7 +136,7 @@ export const getWritingQuestionBySection = async (req, res) => {
             const { answer, ...rest } = q;
             return {
                 ...rest,
-                answersopgks: Array.isArray(answer) && answer.length > 0 ? answer[0] : ""
+                answer: Array.isArray(answer) && answer.length > 0 ? answer[0] : ""
             };
         });
 
