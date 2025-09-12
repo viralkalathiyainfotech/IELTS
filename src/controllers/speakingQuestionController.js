@@ -44,10 +44,20 @@ export const addSpeakingQuestion = async (req, res) => {
 // Get all questions
 export const getAllSpeakingQuestions = async (req, res) => {
     try {
-        const questions = await SpeakingQuestion.find({});
+        let questions = await SpeakingQuestion.find({});
+
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No Questions found!");
         }
+
+        // Convert answer array -> single string (take first element if exists)
+        questions = questions.map(q => {
+            return {
+                ...q._doc,
+                answer: q.answer && q.answer.length > 0 ? q.answer[0] : ""
+            };
+        });
+
         return sendSuccessResponse(res, "Questions fetched Successfully...", questions);
     } catch (error) {
         return ThrowError(res, 500, error.message);
@@ -58,19 +68,28 @@ export const getAllSpeakingQuestions = async (req, res) => {
 export const getSpeakingQuestionById = async (req, res) => {
     try {
         const { id } = req.params;
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Question Id");
         }
-        const question = await SpeakingQuestion.findById(id);
+
+        let question = await SpeakingQuestion.findById(id);
+
         if (!question) {
             return sendBadRequestResponse(res, "Question not found");
         }
+
+        // Convert answer array -> single string
+        question = {
+            ...question._doc,
+            answer: question.answer && question.answer.length > 0 ? question.answer[0] : ""
+        };
+
         return sendSuccessResponse(res, "Question fetched Successfully...", question);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
 };
-
 // Get Speakingquestion by speakingSectionId
 export const getSpeakingQuestionBySection = async (req, res) => {
     try {
@@ -80,13 +99,19 @@ export const getSpeakingQuestionBySection = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid SpeakingTopicId Id");
         }
 
-        const question = await SpeakingQuestion.find({ speakingTopicId });
+        let questions = await SpeakingQuestion.find({ speakingTopicId });
 
-        if (!question || question.length === 0) {
+        if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No question found for this Section!");
         }
 
-        return sendSuccessResponse(res, "question fetched Successfully...", question);
+        // Convert answer array -> single string
+        questions = questions.map(q => ({
+            ...q._doc,
+            answer: q.answer && q.answer.length > 0 ? q.answer[0] : ""
+        }));
+
+        return sendSuccessResponse(res, "Questions fetched Successfully...", questions);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
@@ -96,9 +121,11 @@ export const getSpeakingQuestionBySection = async (req, res) => {
 export const updateSpeakingQuestion = async (req, res) => {
     try {
         const { id } = req.params;
+
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return sendBadRequestResponse(res, "Invalid Question Id");
         }
+
         let question = await SpeakingQuestion.findById(id);
         if (!question) {
             return sendBadRequestResponse(res, "Question not found");
@@ -109,8 +136,16 @@ export const updateSpeakingQuestion = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid speakingTopicId Id");
         }
 
+        // Update
         question = await SpeakingQuestion.findByIdAndUpdate(id, { ...req.body }, { new: true });
-        return sendSuccessResponse(res, "Question Updated Successfully...", question);
+
+        // Convert answer array -> single string
+        const formattedQuestion = {
+            ...question._doc,
+            answer: question.answer && question.answer.length > 0 ? question.answer[0] : ""
+        };
+
+        return sendSuccessResponse(res, "Question Updated Successfully...", formattedQuestion);
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }
@@ -144,7 +179,7 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid speakingTopicId");
         }
 
-        const questions = await SpeakingQuestion.find({ speakingTopicId });
+        let questions = await SpeakingQuestion.find({ speakingTopicId });
         if (!questions || questions.length === 0) {
             return sendBadRequestResponse(res, "No questions found for this section");
         }
@@ -153,20 +188,12 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
         questions.sort((a, b) => a.position - b.position);
 
         const answers = questions.map((q) => {
-            // ✅ Normalize correctAnswer
-            let correctAnswer = Array.isArray(q.answer) ? q.answer : [q.answer];
-
-            if (
-                typeof correctAnswer[0] === "string" &&
-                correctAnswer[0].startsWith("[") &&
-                correctAnswer[0].endsWith("]")
-            ) {
-                try {
-                    const parsed = JSON.parse(correctAnswer[0]);
-                    if (Array.isArray(parsed)) correctAnswer = parsed;
-                } catch (e) {
-                    // leave original
-                }
+            // ✅ Take only first answer as string (instead of array)
+            let correctAnswer = "";
+            if (Array.isArray(q.answer) && q.answer.length > 0) {
+                correctAnswer = q.answer[0];
+            } else if (typeof q.answer === "string") {
+                correctAnswer = q.answer;
             }
 
             return {
@@ -182,7 +209,7 @@ export const getSpeakingSectionCorrectAnswers = async (req, res) => {
             answers
         );
     } catch (error) {
-        return sendBadRequestResponse(res, error.message);
+        return ThrowError(res, 500, error.message);
     }
 };
 
