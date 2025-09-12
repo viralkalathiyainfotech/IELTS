@@ -66,7 +66,7 @@ export const checkAndSubmitWritingAnswers = async (req, res) => {
             return {
                 questionId,
                 userAnswer: userAns,
-                correctAnswer,
+                correctAnswer: correctAnswer[0],   // ✅ return string, not array
                 similarityPercentage,
                 isCorrect
             };
