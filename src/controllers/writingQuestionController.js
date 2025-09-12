@@ -123,19 +123,27 @@ export const getWritingQuestionBySection = async (req, res) => {
             return sendBadRequestResponse(res, "Invalid WritingSection Id");
         }
 
-        const question = await WritingQuestion.find({ writingSectionId });
+        const questions = await WritingQuestion.find({ writingSectionId }).lean();
 
-        if (!question || question.length === 0) {
+        if (!questions || questions.length === 0) {
             return sendBadRequestResponse(
                 res,
                 "No question found for this Section!"
             );
         }
 
+        const modifiedQuestions = questions.map(q => {
+            const { answer, ...rest } = q;
+            return {
+                ...rest,
+                answersopgks: Array.isArray(answer) && answer.length > 0 ? answer[0] : ""
+            };
+        });
+
         return sendSuccessResponse(
             res,
             "Questions fetched Successfully...",
-            question
+            modifiedQuestions
         );
     } catch (error) {
         return ThrowError(res, 500, error.message);
