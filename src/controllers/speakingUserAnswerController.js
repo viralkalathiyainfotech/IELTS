@@ -23,26 +23,25 @@ const normalizeAnswer = (answer) => {
     if (!answer) return "";
     let correctAnswer = Array.isArray(answer) ? answer : [answer];
 
-    if (
-        typeof correctAnswer[0] === "string" &&
+    if (typeof correctAnswer[0] === "string" &&
         correctAnswer[0].startsWith("[") &&
-        correctAnswer[0].endsWith("]")
-    ) {
+        correctAnswer[0].endsWith("]")) {
         try {
             const parsed = JSON.parse(correctAnswer[0]);
             if (Array.isArray(parsed)) correctAnswer = parsed;
-        } catch {
-            // leave original
-        }
+        } catch { }
     }
     return correctAnswer.join(" ");
 };
 
-// Convert audio to wav
+// Convert any audio file to WAV
 const convertToWav = (inputPath, outputPath) => {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .toFormat('wav')
+            .audioCodec('pcm_s16le')
+            .audioChannels(1)
+            .audioFrequency(16000)
             .on('end', () => resolve(outputPath))
             .on('error', reject)
             .save(outputPath);
@@ -58,17 +57,15 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
             return sendBadRequestResponse(res, "questionId, speakingTopicId and audio are required!");
         }
 
-        if (
-            !mongoose.Types.ObjectId.isValid(userId) ||
+        if (!mongoose.Types.ObjectId.isValid(userId) ||
             !mongoose.Types.ObjectId.isValid(questionId) ||
-            !mongoose.Types.ObjectId.isValid(speakingTopicId)
-        ) {
+            !mongoose.Types.ObjectId.isValid(speakingTopicId)) {
             return sendBadRequestResponse(res, "Invalid IDs!");
         }
 
         if (!req.file) return sendBadRequestResponse(res, "Audio file is required!");
 
-        // Upload audio to S3
+        // Upload original audio to S3
         const s3AudioResult = await uploadToS3(
             req.file.buffer,
             req.file.originalname,
@@ -77,18 +74,20 @@ export const checkAndSubmitSpeakingAnswer = async (req, res) => {
         );
         const audioUrl = s3AudioResult.Location;
 
-        const wavBuffer = req.file.buffer;
+        // Save buffer to temporary file
+        const originalTempPath = path.join(__dirname, `temp_audio_${Date.now()}${path.extname(req.file.originalname)}`);
+        fs.writeFileSync(originalTempPath, req.file.buffer);
 
-        // Temporary paths
+        // Convert to WAV for Whisper
+        const wavTempPath = path.join(__dirname, `temp_audio_${Date.now()}.wav`);
+        await convertToWav(originalTempPath, wavTempPath);
+
+        // Whisper temp script
         const tempScriptPath = path.join(__dirname, "whisper_temp_script.py");
         const transcriptTempPath = path.join(__dirname, `transcript_${Date.now()}.txt`);
-        const tempAudioPath = path.join(__dirname, `temp_audio_${Date.now()}.wav`);
-
-        // Python Whisper script
         const pythonScript = `
 import whisper
-import sys
-import os
+import sys, os
 
 audio_path = sys.argv[1]
 model_size = sys.argv[2]
@@ -106,7 +105,6 @@ except Exception as e:
     sys.exit(1)
 
 text = result.get("text", "").strip()
-
 if not text:
     print("[ERROR] Empty transcript.")
     sys.exit(1)
@@ -114,22 +112,16 @@ if not text:
 with open(output_path, "w", encoding="utf-8") as f:
     f.write(text)
 `;
-
-        // Write temp files
         fs.writeFileSync(tempScriptPath, pythonScript);
-        fs.writeFileSync(tempAudioPath, wavBuffer);
 
-        // Run Python Whisper transcription
+        // Run Whisper transcription
         try {
-            const command = `py "${tempScriptPath}" "${tempAudioPath}" "base" "${transcriptTempPath}"`;
+            const command = `py "${tempScriptPath}" "${wavTempPath}" "base" "${transcriptTempPath}"`;
             execSync(command, { encoding: "utf8" });
         } catch (err) {
-            console.error("Whisper Transcription Error:", err.message);
-            [tempScriptPath, tempAudioPath].forEach((f) => fs.existsSync(f) && fs.unlinkSync(f));
-            return sendBadRequestResponse(
-                res,
-                "Transcription failed. Make sure Python & Whisper are installed."
-            );
+            console.error("Whisper Transcription Error:", err.stdout?.toString(), err.stderr?.toString(), err.message);
+            [originalTempPath, wavTempPath, tempScriptPath].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
+            return sendBadRequestResponse(res, "Transcription failed. Make sure Python & Whisper are installed.");
         }
 
         // Read transcript
@@ -138,9 +130,7 @@ with open(output_path, "w", encoding="utf-8") as f:
             transcriptText = fs.readFileSync(transcriptTempPath, "utf8").trim();
 
         if (!transcriptText) {
-            [tempScriptPath, tempAudioPath, transcriptTempPath].forEach((f) =>
-                fs.existsSync(f) && fs.unlinkSync(f)
-            );
+            [originalTempPath, wavTempPath, tempScriptPath, transcriptTempPath].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
             return sendBadRequestResponse(res, "Transcript not generated.");
         }
 
@@ -155,30 +145,23 @@ with open(output_path, "w", encoding="utf-8") as f:
         const transcriptUrl = s3TranscriptResult.Location;
 
         // Cleanup temp files
-        [tempScriptPath, tempAudioPath, transcriptTempPath].forEach((f) =>
-            fs.existsSync(f) && fs.unlinkSync(f)
-        );
+        [originalTempPath, wavTempPath, tempScriptPath, transcriptTempPath].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
 
-        // Fetch question
+        // Fetch question and normalize answer
         const question = await SpeakingQuestion.findById(questionId);
         if (!question) return sendBadRequestResponse(res, "Question not found!");
-
-        // Normalize correct answer
         const correctAnswer = normalizeAnswer(question.answer);
 
-        // Compare transcript vs correct answer
+        // Compare transcript with correct answer
         const cleanTranscript = transcriptText.toLowerCase().trim();
         const cleanAnswer = (correctAnswer || "").toLowerCase().trim();
-
         const similarity = stringSimilarity.compareTwoStrings(cleanTranscript, cleanAnswer);
         const similarityPercentage = Math.round(similarity * 100);
         const isCorrect = similarity >= 0.7;
 
         // Save user answer
         let userAnswerDoc = await SpeakingUserAnswer.findOne({ userId, speakingTopicId });
-        if (!userAnswerDoc) {
-            userAnswerDoc = new SpeakingUserAnswer({ userId, speakingTopicId, answers: [] });
-        }
+        if (!userAnswerDoc) userAnswerDoc = new SpeakingUserAnswer({ userId, speakingTopicId, answers: [] });
 
         const updatedAnswerObj = {
             questionId,
@@ -189,15 +172,9 @@ with open(output_path, "w", encoding="utf-8") as f:
             isCorrect,
         };
 
-        const existingIndex = userAnswerDoc.answers.findIndex(
-            (ans) => ans.questionId.toString() === questionId
-        );
-
-        if (existingIndex !== -1) {
-            userAnswerDoc.answers[existingIndex] = updatedAnswerObj;
-        } else {
-            userAnswerDoc.answers.push(updatedAnswerObj);
-        }
+        const existingIndex = userAnswerDoc.answers.findIndex(ans => ans.questionId.toString() === questionId);
+        if (existingIndex !== -1) userAnswerDoc.answers[existingIndex] = updatedAnswerObj;
+        else userAnswerDoc.answers.push(updatedAnswerObj);
 
         await userAnswerDoc.save();
 
@@ -206,6 +183,7 @@ with open(output_path, "w", encoding="utf-8") as f:
             speakingTopicId,
             answer: updatedAnswerObj,
         });
+
     } catch (error) {
         return ThrowError(res, 500, error.message);
     }

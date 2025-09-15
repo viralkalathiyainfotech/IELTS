@@ -48,7 +48,6 @@ const upload = multer({
         }
         return cb(new Error(`Invalid field name: ${file.fieldname}`));
     },
-    limits: { fileSize: 1024 * 1024 * 200 }, // 200MB
 });
 
 // 🔹 Convert JFIF / unsupported formats to JPEG
