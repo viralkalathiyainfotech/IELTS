@@ -144,7 +144,6 @@ with open(output_path, "w", encoding="utf-8") as f:
         );
         const transcriptUrl = s3TranscriptResult.Location;
 
-        // Cleanup temp files
         [originalTempPath, wavTempPath, tempScriptPath, transcriptTempPath].forEach(f => fs.existsSync(f) && fs.unlinkSync(f));
 
         // Fetch question and normalize answer
