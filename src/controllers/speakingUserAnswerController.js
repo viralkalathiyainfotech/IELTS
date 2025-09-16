@@ -189,8 +189,6 @@ with open(output_path, "w", encoding="utf-8") as f:
     }
 };
 
-
-
 export const getAllSpeakingTestResults = async (req, res) => {
     try {
         const userId = req.user._id;
