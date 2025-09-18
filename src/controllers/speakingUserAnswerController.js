@@ -249,8 +249,7 @@ export const getAllSpeakingTestResults = async (req, res) => {
                     wrongAnswers,
                     percentage,
                     status,
-                    bandScore,
-                    answers: test.answers,
+                    bandScore
                 };
             })
         );
