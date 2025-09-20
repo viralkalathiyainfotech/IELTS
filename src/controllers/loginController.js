@@ -2,6 +2,7 @@ import Register from "../models/registerModel.js";
 import { ThrowError } from "../utils/ErrorUtils.js"
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer"
+import jwt from "jsonwebtoken";
 import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendUnauthorizedResponse } from '../utils/ResponseUtils.js';
 
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -200,43 +201,55 @@ export const changePassword = async (req, res) => {
 
 export const googleLogin = async (req, res) => {
     try {
-        let { uid, firstName, lastName, email, image } = req.body;
+        const { uid, name, email, avatar } = req.body;
 
-        let checkUser = await Register.findOne({ email });
-        if (!checkUser) {
-            checkUser = await Register.create({
-                uid,
-                firstName,
-                lastName,
-                email,
-                image,
+        if (!uid && !name && !email && !avatar) {
+            return res.status(400).json({
+                success: false,
+                message: "uid, name, email & avatar are required!"
             });
         }
 
-        // Generate JWT token
-        const token = await checkUser.getJWT();
-        if (!token) {
-            return sendErrorResponse(res, 500, "Failed to generate token");
+        const existingUser = await Register.findOne({ email: email });
+        if (existingUser) {
+            const payload = {
+                id: existingUser._id,
+                name: existingUser.name,
+                email: existingUser.email,
+                role: existingUser.role
+            }
+
+            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+            return res.status(200).json({
+                success: true,
+                message: "User already exists, login successful",
+                user: existingUser,
+                token: token
+            });
         }
 
-        return res.status(200).json({ status: 200, success: true, message: "User Login SuccessFully...", user: checkUser, token: token });
+        // Create new social user
+        const newUser = await Register.create({
+            uid,
+            name,
+            email,
+            avatar,
+            verified: true
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "New social login & registration successful",
+            user: newUser
+        });
 
     } catch (error) {
-        return sendErrorResponse(res, 500, error.message);
+        console.error("Social Register Error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Error while registering social user",
+            error: error.message
+        });
     }
 };
-
-
-//logoutUser
-// export const logoutUser = async (req, res) => {
-//     try {
-//         res.cookie("token", null, {
-//             expires: new Date(Date.now()),
-//             httpOnly: true,
-//             path: "/"
-//         });
-//         return sendSuccessResponse(res, "User logout successfully...✅");
-//     } catch (error) {
-//         return sendErrorResponse(res, 400, error.message);
-//     }
-// };

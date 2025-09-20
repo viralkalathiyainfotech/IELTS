@@ -23,6 +23,8 @@ const registerSchema = mongoose.Schema({
     name: { type: String },
     otp: { type: Number },
     otpExpiry: { type: Date },
+    uid: { type: String, default: null },
+    avatar: { type: String, default: null },
     isAdmin: {
         type: Boolean,
         default: false
