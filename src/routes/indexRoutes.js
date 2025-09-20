@@ -120,7 +120,7 @@ indexRoutes.get("/getQuestionById/:id", UserAuth, getReadingQuestionById)
 indexRoutes.get("/getReadingQuestionBySection/:readingSectionId", UserAuth, getReadingQuestionBySection)
 indexRoutes.put("/updateQuestion/:id", UserAuth, isAdmin, updateReadingQuestion)
 indexRoutes.delete("/deleteQuestion/:id", UserAuth, isAdmin, deleteReadingQuestion)
-indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth,  getReadingSectionCorrectAnswers)
+indexRoutes.get("/getReadingSectionCorrectAnswers/:readingSectionId", UserAuth, getReadingSectionCorrectAnswers)
 
 //userAnswer Routes
 indexRoutes.post("/checkAndSubmitReadingAnswers", UserAuth, isUser, checkAndSubmitReadingAnswers)
@@ -132,26 +132,26 @@ indexRoutes.get("/getAllReadingTestResults", UserAuth, getAllReadingTestResults)
 
 //writingTest Routes
 indexRoutes.post("/addWritingTest", UserAuth, isAdmin, addWritingTest)
-indexRoutes.get("/getAllWritingTest", UserAuth,  getAllWritingTest)
-indexRoutes.get("/getWritingTestById/:id", UserAuth,  getWritingTestById)
+indexRoutes.get("/getAllWritingTest", UserAuth, getAllWritingTest)
+indexRoutes.get("/getWritingTestById/:id", UserAuth, getWritingTestById)
 indexRoutes.put("/updateWritingTest/:id", UserAuth, isAdmin, updateWritingTest)
 indexRoutes.delete("/deleteWritingTest/:id", UserAuth, isAdmin, deleteWritingTest)
 
 //writingSection Routes
 indexRoutes.post("/addWritingSection", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, addWritingSection)
-indexRoutes.get("/getAllWritingSection", UserAuth,  getAllWritingSection)
-indexRoutes.get("/getWritingSectionById/:id", UserAuth,  getWritingSectionById)
+indexRoutes.get("/getAllWritingSection", UserAuth, getAllWritingSection)
+indexRoutes.get("/getWritingSectionById/:id", UserAuth, getWritingSectionById)
 indexRoutes.put("/updateWritingSection/:id", UserAuth, isAdmin, upload.single("writing_title_image"), convertJfifToJpeg, updateWritingSection)
 indexRoutes.delete("/deleteWritingSection/:id", UserAuth, isAdmin, deleteWritingSection)
 
 //writingQuestion Routes
 indexRoutes.post("/addWritingQuestion", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, addWritingQuestion);
-indexRoutes.get("/getAllWritingQuestions", UserAuth,  getAllWritingQuestions)
-indexRoutes.get("/getWritingQuestionById/:id", UserAuth,  getWritingQuestionById)
-indexRoutes.get("/getWritingQuestionBySection/:writingSectionId", UserAuth,  getWritingQuestionBySection)
+indexRoutes.get("/getAllWritingQuestions", UserAuth, getAllWritingQuestions)
+indexRoutes.get("/getWritingQuestionById/:id", UserAuth, getWritingQuestionById)
+indexRoutes.get("/getWritingQuestionBySection/:writingSectionId", UserAuth, getWritingQuestionBySection)
 indexRoutes.put("/updateWritingQuestion/:id", UserAuth, isAdmin, uploadMedia, convertJfifToJpeg, updateWritingQuestion)
 indexRoutes.delete("/deleteWritingQuestion/:id", UserAuth, isAdmin, deleteWritingQuestion)
-indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth,  getWritingSectionCorrectAnswers)
+indexRoutes.get("/getWritingSectionCorrectAnswers/:writingSectionId", UserAuth, getWritingSectionCorrectAnswers)
 
 
 //writingUserAnswer Routes
@@ -164,39 +164,39 @@ indexRoutes.get("/getAllWritingTestResults", UserAuth, getAllWritingTestResults)
 
 //ListeningTest Routes
 indexRoutes.post("/addListeningTest", UserAuth, isAdmin, addListeningTest)
-indexRoutes.get("/getAllListeningTest", UserAuth,  getAllListeningTest)
-indexRoutes.get("/getListeningTestById/:id", UserAuth,  getListeningTestById)
+indexRoutes.get("/getAllListeningTest", UserAuth, getAllListeningTest)
+indexRoutes.get("/getListeningTestById/:id", UserAuth, getListeningTestById)
 indexRoutes.put("/updateListeningTest/:id", UserAuth, isAdmin, updateListeningTest)
 indexRoutes.delete("/deleteListeningTest/:id", UserAuth, isAdmin, deleteListeningTest)
 
 //ListeningSection Routes
 indexRoutes.post("/addListeningSection", UserAuth, isAdmin, addListeningSection)
-indexRoutes.get("/getAllListeningSection", UserAuth,  getAllListeningSection)
-indexRoutes.get("/getListeningSectionById/:id", UserAuth,  getListeningSectionById)
+indexRoutes.get("/getAllListeningSection", UserAuth, getAllListeningSection)
+indexRoutes.get("/getListeningSectionById/:id", UserAuth, getListeningSectionById)
 indexRoutes.put("/updateListeningSection/:id", UserAuth, isAdmin, updateListeningSection)
 indexRoutes.delete("/deleteListeningSection/:id", UserAuth, isAdmin, deleteListeningSection)
 indexRoutes.get("/getSectionsByListeningTest/:listeningTestId", UserAuth, getSectionsByListeningTest)
 
 //ListeningAudio Routes
-indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, upload.single('listening_audio'), createListeningAudio);
-indexRoutes.get('/getAllListeningAudios', UserAuth,  getAllListeningAudios);
-indexRoutes.get('/getListeningAudioById/:id', UserAuth,  getListeningAudioById);
-indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, upload.single('listening_audio'), updateListeningAudio);
+indexRoutes.post('/createListeningAudio', UserAuth, isAdmin, uploadMedia, createListeningAudio);
+indexRoutes.get('/getAllListeningAudios', UserAuth, getAllListeningAudios);
+indexRoutes.get('/getListeningAudioById/:id', UserAuth, getListeningAudioById);
+indexRoutes.put('/updateListeningAudio/:id', UserAuth, isAdmin, uploadMedia, updateListeningAudio);
 indexRoutes.delete('/deleteListeningAudio/:id', UserAuth, isAdmin, deleteListeningAudio);
 indexRoutes.get("/getAudioBySection/:listeningSectionId", UserAuth, getAudioBySection)
 
 //listeningQuestion Routes
 indexRoutes.post("/addListeningQuestion", UserAuth, isAdmin, addListeningQuestion);
-indexRoutes.get("/getAllListeningQuestions", UserAuth,  getAllListeningQuestions)
-indexRoutes.get("/getListeningQuestionById/:id", UserAuth,  getListeningQuestionById)
+indexRoutes.get("/getAllListeningQuestions", UserAuth, getAllListeningQuestions)
+indexRoutes.get("/getListeningQuestionById/:id", UserAuth, getListeningQuestionById)
 indexRoutes.get("/getListeningQuestionBySection/:listeningSectionId", UserAuth, getListeningQuestionBySection)
 indexRoutes.put("/updateListeningQuestion/:id", UserAuth, isAdmin, updateListeningQuestion)
 indexRoutes.delete("/deleteListeningQuestion/:id", UserAuth, isAdmin, deleteListeningQuestion)
-indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAuth,  getListeningSectionCorrectAnswers)
+indexRoutes.get("/getListeningSectionCorrectAnswers/:listeningSectionId", UserAuth, getListeningSectionCorrectAnswers)
 
 //writingUserAnswer Routes
-indexRoutes.post("/checkAndSubmitListeningAnswers", UserAuth,  checkAndSubmitListeningAnswers)
-indexRoutes.get("/getAllListeningTestResults", UserAuth,  getAllListeningTestResults)
+indexRoutes.post("/checkAndSubmitListeningAnswers", UserAuth, checkAndSubmitListeningAnswers)
+indexRoutes.get("/getAllListeningTestResults", UserAuth, getAllListeningTestResults)
 
 
 ///////////////////////////////////////////////////// SpeakingTest /////////////////////////////////////////////////////////
@@ -204,30 +204,30 @@ indexRoutes.get("/getAllListeningTestResults", UserAuth,  getAllListeningTestRes
 
 //SpeakingTest Routes
 indexRoutes.post("/createSpekingTest", UserAuth, isAdmin, createSpekingTest)
-indexRoutes.get("/getAllSpeakingTest", UserAuth,  getAllSpeakingTest)
-indexRoutes.get("/getSpeakingTestById/:id", UserAuth,  getSpeakingTestById)
+indexRoutes.get("/getAllSpeakingTest", UserAuth, getAllSpeakingTest)
+indexRoutes.get("/getSpeakingTestById/:id", UserAuth, getSpeakingTestById)
 indexRoutes.put("/updateSpeakingTest/:id", UserAuth, isAdmin, updateSpeakingTest)
 indexRoutes.delete("/deleteSpeakingTest/:id", UserAuth, isAdmin, deleteSpeakingTest)
 
 //SpeakingTopic Routes
 indexRoutes.post("/addSpeakingTopic", UserAuth, isAdmin, addSpeakingTopic)
-indexRoutes.get("/getAllSpeakingTopic", UserAuth,  getAllSpeakingTopic)
-indexRoutes.get("/getSpeakingTopicById/:id", UserAuth,  getSpeakingTopicById)
+indexRoutes.get("/getAllSpeakingTopic", UserAuth, getAllSpeakingTopic)
+indexRoutes.get("/getSpeakingTopicById/:id", UserAuth, getSpeakingTopicById)
 indexRoutes.put("/updateSpeakingTopic/:id", UserAuth, isAdmin, updateSpeakingTopic)
 indexRoutes.delete("/deleteSpeakingTopic/:id", UserAuth, isAdmin, deleteSpeakingTopic)
 
 //SpeakingQuestion Routes
 indexRoutes.post("/addSpeakingQuestion", UserAuth, isAdmin, addSpeakingQuestion);
-indexRoutes.get("/getAllSpeakingQuestions", UserAuth,  getAllSpeakingQuestions)
-indexRoutes.get("/getSpeakingQuestionById/:id", UserAuth,  getSpeakingQuestionById)
-indexRoutes.get("/getSpeakingQuestionBySection/:speakingTopicId", UserAuth,  getSpeakingQuestionBySection)
+indexRoutes.get("/getAllSpeakingQuestions", UserAuth, getAllSpeakingQuestions)
+indexRoutes.get("/getSpeakingQuestionById/:id", UserAuth, getSpeakingQuestionById)
+indexRoutes.get("/getSpeakingQuestionBySection/:speakingTopicId", UserAuth, getSpeakingQuestionBySection)
 indexRoutes.put("/updateSpeakingQuestion/:id", UserAuth, isAdmin, updateSpeakingQuestion)
 indexRoutes.delete("/deleteSpeakingQuestion/:id", UserAuth, isAdmin, deleteSpeakingQuestion)
-indexRoutes.get("/getSpeakingSectionCorrectAnswers/:speakingTopicId", UserAuth,  getSpeakingSectionCorrectAnswers)
+indexRoutes.get("/getSpeakingSectionCorrectAnswers/:speakingTopicId", UserAuth, getSpeakingSectionCorrectAnswers)
 
 //SpeakingUserAnswer Routes
-indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser,  upload.single('speaking_audio'), checkAndSubmitSpeakingAnswer)
-indexRoutes.get("/getAllSpeakingTestResults", UserAuth,  getAllSpeakingTestResults)
+indexRoutes.post("/checkAndSubmitSpeakingAnswer", UserAuth, isUser, upload.single('speaking_audio'), checkAndSubmitSpeakingAnswer)
+indexRoutes.get("/getAllSpeakingTestResults", UserAuth, getAllSpeakingTestResults)
 
 const s3Client = new S3Client({
     region: process.env.S3_REGION,

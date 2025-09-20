@@ -16,7 +16,7 @@ const s3Client = new S3Client({
 });
 
 // 🔹 Folder Mapping in S3
-const getS3Folder = (fieldname) => {
+export const getS3Folder = (fieldname) => {
     switch (fieldname) {
         case "image": return "images";
         case "writing_title_image": return "writing_title_images";

@@ -8,43 +8,58 @@ import {
   sendNotFoundResponse,
 } from "../utils/ResponseUtils.js";
 import mongoose from "mongoose";
-import { deleteFromS3 } from "../middlewares/imageupload.js";
+import { deleteFromS3, getS3Folder, uploadToS3 } from "../middlewares/imageupload.js";
+
 
 export const createListeningAudio = async (req, res) => {
   try {
     const { listeningSectionId } = req.body;
 
-    const listeningFile = req.file;
-    if (!listeningFile) {
-      return res.status(400).json({ success: false, message: "Audio file is required.", result: [] });
-    }
-
     if (!listeningSectionId) {
-      return sendBadRequestResponse(res, "listeningSectionId is required.");
+      return res.status(400).json({ success: false, message: "listeningSectionId is required." });
     }
     if (!mongoose.Types.ObjectId.isValid(listeningSectionId)) {
-      return sendBadRequestResponse(res, "Invalid listeningSectionId.");
+      return res.status(400).json({ success: false, message: "Invalid listeningSectionId." });
     }
 
     const section = await ListeningSection.findById(listeningSectionId);
     if (!section) {
-      return sendBadRequestResponse(res, "Listening section not found.");
+      return res.status(404).json({ success: false, message: "Listening section not found." });
     }
 
+    // Check if audio already exists for this section
     const duplicate = await ListeningAudio.findOne({ listeningSectionId });
     if (duplicate) {
-      return sendBadRequestResponse(res, "Audio already exists for this section.");
+      return res.status(400).json({ success: false, message: "Audio already exists for this section." });
     }
 
+    // Get file from req.files
+    if (!req.files || !req.files["listening_audio"] || req.files["listening_audio"].length === 0) {
+      return res.status(400).json({ success: false, message: "Audio file is required." });
+    }
+
+    const file = req.files["listening_audio"][0];
+    const folder = getS3Folder(file.fieldname);
+
+    // Upload to S3
+    const uploadedFile = await uploadToS3(file.buffer, file.originalname, folder, file.mimetype);
+
+    // Save to MongoDB
     const listeningAudio = new ListeningAudio({
-      listeningAudio: listeningFile.location,
+      listeningAudio: uploadedFile.Location,
       listeningSectionId,
     });
 
     await listeningAudio.save();
-    return sendCreatedResponse(res, "Listening audio created successfully.", listeningAudio);
+
+    return res.status(201).json({
+      success: true,
+      message: "Listening audio created successfully.",
+      result: listeningAudio,
+    });
   } catch (err) {
-    return ThrowError(res, 500, err.message);
+    console.error(err);
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -91,6 +106,7 @@ export const updateListeningAudio = async (req, res) => {
     }
 
     if (req.file) {
+      // Delete old S3 audio if exists
       if (audio.listeningAudio) {
         try {
           await deleteFromS3(audio.listeningAudio);
@@ -98,9 +114,14 @@ export const updateListeningAudio = async (req, res) => {
           console.error("Failed to delete old S3 audio:", err);
         }
       }
-      audio.listeningAudio = req.file.location;
-    }
 
+      // Upload new audio to S3
+      const folder = getS3Folder(req.file.fieldname); // listening_audios
+      const uploadedFile = await uploadToS3(req.file.buffer, req.file.originalname, folder, req.file.mimetype);
+
+      // Update MongoDB with new S3 URL
+      audio.listeningAudio = uploadedFile.Location;
+    }
     if (req.body.listeningSectionId) {
       audio.listeningSectionId = req.body.listeningSectionId;
     }
