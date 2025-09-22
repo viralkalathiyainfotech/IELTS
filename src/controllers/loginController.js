@@ -203,45 +203,53 @@ export const googleLogin = async (req, res) => {
     try {
         const { uid, name, email, avatar } = req.body;
 
-        if (!uid && !name && !email && !avatar) {
+        if (!uid || !name || !email || !avatar) {
             return res.status(400).json({
                 success: false,
                 message: "uid, name, email & avatar are required!"
             });
         }
 
-        const existingUser = await Register.findOne({ email: email });
-        if (existingUser) {
-            const payload = {
-                id: existingUser._id,
-                name: existingUser.name,
-                email: existingUser.email,
-                role: existingUser.role
+        let user = await Register.findOne({ email });
+
+        if (user) {
+            // Update user info if it changed
+            const updatedFields = {};
+            if (user.name !== name) updatedFields.name = name;
+            if (user.avatar !== avatar) updatedFields.avatar = avatar;
+            if (user.uid !== uid) updatedFields.uid = uid;
+
+            if (Object.keys(updatedFields).length > 0) {
+                user = await Register.findByIdAndUpdate(user._id, updatedFields, { new: true });
             }
-
-            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
-
-            return res.status(200).json({
-                success: true,
-                message: "User already exists, login successful",
-                user: existingUser,
-                token: token
+        } else {
+            // Create new user
+            user = await Register.create({
+                uid,
+                name,
+                email,
+                avatar,
+                verified: true
             });
         }
 
-        // Create new social user
-        const newUser = await Register.create({
-            uid,
-            name,
-            email,
-            avatar,
-            verified: true
-        });
+        // Generate JWT token
+        const payload = {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role || 'user'
+        };
 
-        return res.status(201).json({
+        const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+        return res.status(user.isNew ? 201 : 200).json({
             success: true,
-            message: "New social login & registration successful",
-            user: newUser
+            message: user.isNew
+                ? "New social login & registration successful"
+                : "Login successful",
+            user,
+            token
         });
 
     } catch (error) {
