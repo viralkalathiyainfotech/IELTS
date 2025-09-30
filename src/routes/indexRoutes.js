@@ -201,7 +201,6 @@ indexRoutes.get("/getAllListeningTestResults", UserAuth, getAllListeningTestResu
 
 ///////////////////////////////////////////////////// SpeakingTest /////////////////////////////////////////////////////////
 
-
 //SpeakingTest Routes
 indexRoutes.post("/createSpekingTest", UserAuth, isAdmin, createSpekingTest)
 indexRoutes.get("/getAllSpeakingTest", UserAuth, getAllSpeakingTest)
