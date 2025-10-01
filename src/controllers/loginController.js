@@ -71,25 +71,29 @@ export const forgotPassword = async (req, res) => {
         // Save user and verify OTP was saved
         await user.save();
         const savedUser = await Register.findOne({ email: email });
-
-        const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-                user: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
-                pass: process.env.MY_PASSWORD,
-            },
-            tls: { rejectUnauthorized: false },
-        });
-
-        const mailOptions = {
-            from: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
-            to: email,
-            subject: "Password Reset OTP",
-            text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
-        };
-
-        await transporter.sendMail(mailOptions);
-        return sendSuccessResponse(res, "OTP sent successfully to your email");
+        try {
+            const transporter = nodemailer.createTransport({
+                service: "gmail",
+                auth: {
+                    user: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
+                    pass: process.env.MY_PASSWORD,
+                },
+                tls: { rejectUnauthorized: false },
+            });
+    
+            const mailOptions = {
+                from: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
+                to: email,
+                subject: "Password Reset OTP",
+                text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
+            };
+    
+            await transporter.sendMail(mailOptions);
+            return sendSuccessResponse(res, "OTP sent successfully to your email");
+            
+        } catch (error) {
+            return sendErrorResponse(res, 500, error.message);
+        }
 
     } catch (error) {
         return ThrowError(res, 500, error.message);
