@@ -4,7 +4,8 @@ import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer"
 import jwt from "jsonwebtoken";
 import { sendSuccessResponse, sendErrorResponse, sendBadRequestResponse, sendUnauthorizedResponse } from '../utils/ResponseUtils.js';
-
+import dotenv from "dotenv";
+dotenv.config();
 const generateOTP = () => Math.floor(1000 + Math.random() * 9000).toString();
 
 export const loginUser = async (req, res) => {
@@ -74,14 +75,14 @@ export const forgotPassword = async (req, res) => {
         const transporter = nodemailer.createTransport({
             service: "gmail",
             auth: {
-                user: process.env.MY_GMAIL,
+                user: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
                 pass: process.env.MY_PASSWORD,
             },
             tls: { rejectUnauthorized: false },
         });
 
         const mailOptions = {
-            from: process.env.MY_GMAIL,
+            from: process.env.MY_GMAIL || "darshan1kalathiyainfotech@gmail.com",
             to: email,
             subject: "Password Reset OTP",
             text: `Your OTP for password reset is: ${otp}. It is valid for 10 minutes.`,
